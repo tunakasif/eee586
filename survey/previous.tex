@@ -47,14 +47,10 @@ Graph structured data sometimes traces back to other disciplines such as biology
 \subsubsection{Ways to use GNNs}
 In~\autocite{zhou20gnn}, a general design to pipeline of GNNs is proposed. The following steps are necessary to obtain a graph-based deep learning framework:
 \paragraph{Finding a graph structure}
-At first, we have to find out the graph structure in the application.
-There are usually two scenarios: structural scenarios and non-structural
-scenarios. In structural scenarios, the graph structure is explicit in the
-applications, such as applications on molecules, physical systems,
-knowledge graphs and so on. In non-structural scenarios, graphs are
-implicit so that we have to first build the graph from the task, such as
-building a fully-connected ``word'' graph for text or building a scene
-graph for an image. After we get the graph, the later design process at-
-tempts to find an optimal GNN model on this specific graph.
+Based on the application in hand, we need to find out the underlying graph structure. There are two possibilities. First one is that we have an explicit graph structure, in the application such as social network, physical system or knowledge graph. The other possibility is that the underlying graph is implicit, and we need to build the graph from the task, such as obtaining a fully-connected ``word'' graph for text or obtaining a scene graph for an image. Then, we can obtain an optimal GNN model for the the graph we obtained either from explicit information or from the task.
 
-Based on the application in hand, we need to find out the underlying graph structure. There are two possibilities. First one is that we have an explicit graph structure,
+\paragraph{Design a loss function}
+Based on the task in hand and the training setting, a loss function needs to be determined, the loss function can be node-level, edge-level or graph-level, depending on the training setting of supervised, semi-supervised or unsupervised learning.
+
+\paragraph{Build model using computational modules}
+Finally, we need computational modules to build and train our model. Based on the definition provided in~\autocite{zhou20gnn}, we need a module to conduct convolution and recurrent operations to propagate information between nodes to capture the underlying feature and topological information. We need a sampling module, and we need a pooling module. With the combination of these modules a typical architecture of GNN model can be built.
