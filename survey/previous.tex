@@ -5,23 +5,27 @@
     \item GNN in NLP, more specifically in Text Classification in~\cref{sec:related}.
 \end{itemize}
 
+\clearpage
 \section{Previous Work}
 \subsection{Text Classification}\label{sec:TC}
-\emph{Text classification} is the ``procedure of designating pre-defined labels for the text''. The task is to assign labels to the text based knowledge, where the labels are usually defined by humans, but can also be defined by the machine. This task is a fundamental part of Natural Language Processing (NLP), and it is significant to its applications such as sentiment analysis, question answering, text summarization, etc.~\autocite{li20tc}. Text classification task can be partitioned into five phases: preprocessing, feature extraction, dimensionality reduction (optional), classifier selection and evaluation:
+\emph{Text classification} (text categorization) is the ``procedure of designating predefined labels for the text''. The task is to assign labels or tags to the text based knowledge, i.e., textual units such as sentences, paragraphs and documents, where the labels are usually defined by humans, but can also be defined by the machine. This task is a fundamental part of Natural Language Processing (NLP), and it is significant to its applications such as sentiment analysis, question answering, text summarization, etc.~\autocite{li20tc}. Text classification task can be partitioned into five phases as preprocessing, feature extraction, dimensionality reduction (optional), classifier selection and evaluation:
 
 \subsubsection{Preprocessing}
 Text preprocessing is a crucial prerequisite for a successful feature extraction. The input of the text classification frameworks consists of raw text data, which are in the form of a sequence of sentences. In this step, ``cleaning'' of the text datasets is performed to transform the data into a form that is suitable for feature extraction. The cleaning process is usually performed by tokenization, capitalization, slang and abbreviation handling, noise removal, spelling correction, stemming and lemmatization~\autocite{kowsari19tc}.
 
 \subsubsection{Feature Extraction}
-After preprocessing step, another crucial step, feature extraction step is necessary. Two common methods of text based feature extraction are weighted word and word embedding techniques. In the weighted word aspect, we have old techniques like bag-of-words and term frequency-inverse document frequency (TF-IDF). In the relatively recent aspect, we have the word embedding techniques like \emph{word2vec}, \emph{GloVe}, \emph{FastText}, etc.~\autocite{li20tc}.
+After preprocessing step, another crucial step, feature extraction step is necessary. Two common methods of text based feature extraction are weighted word and word embedding techniques. In the weighted word aspect, we have old techniques like bag-of-words and term frequency-inverse document frequency (TF-IDF). In the relatively recent aspect, we have the word embedding techniques like \emph{word2vec}, \emph{GloVe}, \emph{FastText}, etc.~\autocite{kowsari19tc}.
 
 \subsubsection{Dimensionality Reduction}
+The dimensionality reduction is an optional step of a text classification task, but based on the size of the dataset, it may be a must to have a computable result. In this aspect of the task, we try to reduce the dimensionality of the feature space while preserving the information of the original features space. Possible dimensionality reduction techniques include (principal / independent) component analysis, linear discriminant analysis, non-negative matrix factorization, random projection, autoencoder and stochastic neighbor embedding~\autocite{kowsari19tc}.
+
 \subsubsection{Classifier Selection}
+Selecting the optimal classifier is the most important aspect of a text classification task. Currently we have both traditional and deep learning oriented classifiers. The traditional classifiers are based on the statistical analysis of the training data, and the deep learning classifiers are based on the neural networks. The main distinction between the traditional and deep learning based approaches can be described as follows: Traditional models usually need to obtain good sample features by artificial methods and then classify them with classic machine learning algorithms. Therefore, the effectiveness of the method is largely restricted by feature extraction. Deep learning based classifier selection can integrate feature engineering into the model fitting process by learning a set of nonlinear transformations that serve to map features directly to outputs~\autocite{li20tc}.
+
+Some traditional classifiers are logistic regression, (kernel) support vector machine, Naive Bayes, \(k\)-nearest neighbors, decision tree, random forest, etc.~\autocite{li20tc,kowsari19tc}. On the other hand, the deep learning classifiers are usually based on the neural networks, such as deep feed forward neural networks, convolutional neural networks (CNNs), recurrent neural networks (RNNs), lately attention and transformer based models such as BERT~\autocite{devlin18bert} variations and fine tuning pre-trained language models~\autocite{howard18tc}, and finally what we will focus on, graph neural network (GNN) based models~\autocite{kowsari19tc,li20tc,minaee20tc}.
+
 \subsubsection{Evaluation}
-GLUE~\autocite{wang18glue}, TweetEval~\autocite{tweeteval}, among others.
-
-~\autocite{kowsari19tc,li20tc,devlin18bert,howard18tc}
-
+Evaluation is step that we understand how the our model performs under the given text classification task. There are several evaluation metrics that can be used to evaluate the performance of a supervised technique. The most common metrics are accuracy, \(F_\beta \)-score, micro/macro-averaging. Although we also have metrics like Matthews correlation coefficient and receiver operating characteristics (ROC)~\autocite{li20tc,minaee20tc}. In order to evaluate the performance of our model, based on the provided techniques, we need to use labeled data which are preferably specific to our text classification task, i.e., we need benchmark datasets like GLUE~\autocite{wang18glue}, TweetEval~\autocite{tweeteval}, among others.
 
 \subsection{Graph Neural Networks}\label{sec:GNN}
 ~\autocite{zhou20gnn,wu21gnn,zhang18dlongraphs,sun18adversarial}.
