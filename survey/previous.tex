@@ -1,0 +1,27 @@
+\section{Introduction}
+\begin{itemize}
+    \item Introduction to Text Classification task, overview of the previous approaches, in~\cref{sec:TC}.
+    \item Introduction to Graph Neural Networks (GNNs), what is GNN, why they are being utilized, in~\cref{sec:GNN}.
+    \item GNN in NLP, more specifically in Text Classification in~\cref{sec:related}.
+\end{itemize}
+
+\section{Previous Work}
+\subsection{Text Classification}\label{sec:TC}
+\emph{Text classification} is the ``procedure of designating pre-defined labels for the text''. The task is to assign labels to the text based knowledge, where the labels are usually defined by humans, but can also be defined by the machine. This task is a fundamental part of Natural Language Processing (NLP), and it is significant to its applications such as sentiment analysis, question answering, text summarization, etc.~\autocite{li20tc}. Text classification task can be partitioned into five phases: preprocessing, feature extraction, dimensionality reduction (optional), classifier selection and evaluation:
+
+\subsubsection{Preprocessing}
+Text preprocessing is a crucial prerequisite for a successful feature extraction. The input of the text classification frameworks consists of raw text data, which are in the form of a sequence of sentences. In this step, ``cleaning'' of the text datasets is performed to transform the data into a form that is suitable for feature extraction. The cleaning process is usually performed by tokenization, capitalization, slang and abbreviation handling, noise removal, spelling correction, stemming and lemmatization~\autocite{kowsari19tc}.
+
+\subsubsection{Feature Extraction}
+After preprocessing step, another crucial step, feature extraction step is necessary. Two common methods of text based feature extraction are weighted word and word embedding techniques. In the weighted word aspect, we have old techniques like bag-of-words and term frequency-inverse document frequency (TF-IDF). In the relatively recent aspect, we have the word embedding techniques like \emph{word2vec}, \emph{GloVe}, \emph{FastText}, etc.~\autocite{li20tc}.
+
+\subsubsection{Dimensionality Reduction}
+\subsubsection{Classifier Selection}
+\subsubsection{Evaluation}
+GLUE~\autocite{wang18glue}, TweetEval~\autocite{tweeteval}, among others.
+
+~\autocite{kowsari19tc,li20tc,devlin18bert,howard18tc}
+
+
+\subsection{Graph Neural Networks}\label{sec:GNN}
+~\autocite{zhou20gnn,wu21gnn,zhang18dlongraphs,sun18adversarial}.

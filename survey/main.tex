@@ -1,0 +1,43 @@
+\documentclass[a4paper, 12pt, conference]{IEEEtran}
+\usepackage[utf8]{inputenc}
+\usepackage[style=ieee]{biblatex}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage[capitalise,nameinlink]{cleveref}
+\usepackage{lipsum}
+
+\title{EEE 586: Survey for the Term Project\\Text Classification with Graph Neural Networks}
+\author{
+    \IEEEauthorblockN{Tuna Alikaşifoğlu}
+    \IEEEauthorblockA{\textit{Dept.\ of Electrical and Electronics Engineering} \\ \textit{Bilkent University}\\\href{mailto:t.alikasifoglu@bilkent.edu.tr}{\texttt{t.alikasifoglu@bilkent.edu.tr}}}
+    \and
+    \IEEEauthorblockN{Arda Can Aras}
+    \IEEEauthorblockA{\textit{Dept.\ of Electrical and Electronics Engineering} \\ \textit{Bilkent University}\\\href{mailto:can.aras@bilkent.edu.tr}{\texttt{can.aras@bilkent.edu.tr}}}
+}
+\date{\today}
+\bibliography{bibliography}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=[rgb]{0.6,0,0},
+    citecolor=[rgb]{0,0.6,0},
+    urlcolor=[rgb]{0,0,0.6},
+    % allcolors=black
+    pdftitle={EEE 586 Survey-Group 16},
+    bookmarksopen=true,
+}
+\allowdisplaybreaks{}
+
+\begin{document}
+\maketitle
+\thispagestyle{plain}
+\pagestyle{plain}
+\begin{abstract}
+    \lipsum[1]{}
+\end{abstract}
+
+\input{previous}
+\input{related}
+
+\clearpage
+\printbibliography{}
+\end{document}
