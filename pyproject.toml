@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "eee586"
+version = "0.1.0"
+description = ""
+authors = [
+    "Tuna Alikaşifoğlu <tunakasif@gmail.com>",
+    "Arda Can Aras <ardaaras99@gmail.com>",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.10"
+
+[tool.poetry.dev-dependencies]
+black = "^22.3.0"
+ipykernel = "^6.13.0"
+poethepoet = "^0.13.1"
+pytest = "^7.1.2"
+
+[tool.poe.tasks]
+install-torch = "python -m pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113"
+install-torch-geo = "pip install torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-1.11.0+cu113.html"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
