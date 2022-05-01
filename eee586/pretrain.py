@@ -1,4 +1,3 @@
-# %%
 from pathlib import Path
 from datasets import load_dataset
 from transformers import (
@@ -10,11 +9,7 @@ from transformers import (
 )
 
 from eee586 import BERT_MODEL_DIR, BERT_DEFAULT_MODEL_NAME
-from utils import get_time
-
-
-def preprocess_function(tokenizer, examples):
-    return tokenizer(examples["text"], truncation=True)
+from eee586.utils import get_time
 
 
 def pretrain_bert_model(
@@ -26,7 +21,9 @@ def pretrain_bert_model(
     dataset = load_dataset(dataset_name)
     tokenizer = AutoTokenizer.from_pretrained(bert_model_name)
 
-    tokenized_dataset = dataset.map(preprocess_function, batched=True)
+    tokenized_dataset = dataset.map(
+        lambda x: tokenizer(x["text"], truncation=True), batched=True
+    )
     if dataset_sample_size is not None:
         r = range(dataset_sample_size)
         small_train_dataset = tokenized_dataset["train"].shuffle().select(r)
