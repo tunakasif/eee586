@@ -1,5 +1,7 @@
 from pathlib import Path
+from typing import Union, Tuple
 from datasets import load_dataset
+from datasets.dataset_dict import DatasetDict
 from transformers import (
     AutoTokenizer,
     DataCollatorWithPadding,
@@ -12,13 +14,28 @@ from eee586 import BERT_MODEL_DIR, BERT_DEFAULT_MODEL_NAME
 from eee586.utils import get_time
 
 
+def get_num_label(dataset: DatasetDict) -> int:
+    train_dataset = dataset.get("train")
+    try:
+        labels = [sample["label"] for sample in train_dataset]
+    except KeyError as e:
+        print(f"Dataset {dataset} does not have label.")
+        raise e
+    labels_set = set(labels)
+    return len(labels_set)
+
+
 def pretrain_bert_model(
     bert_model_name: str = BERT_DEFAULT_MODEL_NAME,
-    dataset_name: str = "imdb",
+    dataset_name: Union[str, Tuple[str]] = "imdb",
     output_dir: str = None,
     dataset_sample_size: int = None,
 ):
-    dataset = load_dataset(dataset_name)
+    if type(dataset_name) is tuple:
+        dataset = load_dataset(*dataset_name)
+    else:
+        dataset = load_dataset(dataset_name)
+    num_labels = get_num_label(dataset)
     tokenizer = AutoTokenizer.from_pretrained(bert_model_name)
 
     tokenized_dataset = dataset.map(
@@ -31,7 +48,7 @@ def pretrain_bert_model(
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
     model = AutoModelForSequenceClassification.from_pretrained(
-        bert_model_name, num_labels=2
+        bert_model_name, num_labels=num_labels
     )
 
     if output_dir is None:
@@ -43,8 +60,8 @@ def pretrain_bert_model(
     training_args = TrainingArguments(
         output_dir=output_dir,
         learning_rate=2e-5,
-        per_device_train_batch_size=2,
-        per_device_eval_batch_size=2,
+        per_device_train_batch_size=1,
+        per_device_eval_batch_size=1,
         num_train_epochs=5,
         weight_decay=0.01,
     )
