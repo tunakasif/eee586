@@ -2,7 +2,7 @@ import click
 import torch
 
 from eee586.pretrain import pretrain_bert_model
-from eee586.word_embedding import embed_sentence
+from eee586.word_embedding import get_token_encodings
 
 
 @click.group()
@@ -24,15 +24,10 @@ def pretrain(dataset_sample_size):
 
 
 @cli.command()
-@click.option(
-    "--sentence",
-    default="Replace me by any text you'd like.",
-    help="Sentence to embed.",
-    type=click.STRING,
-)
-def embed(sentence):
-    output = embed_sentence(sentence)
-    print(output[0].shape)
+def embed():
+    train_toke_enc_dict = get_token_encodings("train")
+    print(train_toke_enc_dict["input_ids"][0])
+    print(train_toke_enc_dict["labels"][0])
 
 
 @cli.command()

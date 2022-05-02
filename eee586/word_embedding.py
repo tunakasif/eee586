@@ -1,13 +1,54 @@
-# %%
-from transformers import BertTokenizer, BertModel
+from transformers import BertTokenizer
 from pathlib import Path
+from datasets import load_dataset
+from tqdm import tqdm
+from typing import List, Dict
 
-from eee586 import BERT_DEFAULT_MODEL_NAME
+from eee586 import BERT_DEFAULT_MODEL_NAME, PKL_DIR
+from eee586.utils import picklize
 
 
-def embed_sentence(sentence, model_name=BERT_DEFAULT_MODEL_NAME):
-    tokenizer = BertTokenizer.from_pretrained(BERT_DEFAULT_MODEL_NAME)
-    model = BertModel.from_pretrained(BERT_DEFAULT_MODEL_NAME)
-    encoded_input = tokenizer.encode(sentence, return_tensors="pt")
-    output = model(encoded_input)
-    return output
+def _get_input_ids_and_labels(tokenizer, dataset) -> Dict[str, List[int]]:
+    texts_list = [sample["text"] for sample in dataset]
+    tokenized_encoded = tokenizer.batch_encode_plus(
+        tqdm(texts_list),
+    )
+    input_ids = tokenized_encoded["input_ids"]
+    labels = [sample["label"] for sample in dataset]
+    token_enc_dict = {
+        "input_ids": input_ids,
+        "labels": labels,
+    }
+    return token_enc_dict
+
+
+def get_token_encodings(
+    sub_dataset_name: str,  # train/test
+    *,
+    enforce_recompute: bool = False,
+    model_name=BERT_DEFAULT_MODEL_NAME,
+    dataset_name="SetFit/20_newsgroups",
+):
+    if not sub_dataset_name in ["train", "test"]:
+        raise ValueError("sub_dataset must be either 'train' or 'test'")
+
+    pkl_enc_path = Path.joinpath(
+        PKL_DIR,
+        BERT_DEFAULT_MODEL_NAME,
+        f"{dataset_name.replace('/', '_')}",
+    )
+    Path.mkdir(pkl_enc_path, exist_ok=True, parents=True)
+
+    dataset = load_dataset(dataset_name)
+    tokenizer = BertTokenizer.from_pretrained(model_name)
+
+    sub_dataset = dataset.get(f"{sub_dataset_name}")
+    sub_pkl_enc_path = Path.joinpath(pkl_enc_path, f"{sub_dataset_name}_token_enc.pkl")
+    sub_token_enc_dict = picklize(
+        _get_input_ids_and_labels,
+        sub_pkl_enc_path,
+        tokenizer,
+        sub_dataset,
+        enforce=enforce_recompute,
+    )
+    return sub_token_enc_dict
