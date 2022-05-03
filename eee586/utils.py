@@ -2,15 +2,35 @@ import time
 import pickle
 from pathlib import Path
 import numpy as np
+import itertools
 
 
 def pmi(
+    w1_id: int,
+    w2_id: int,
     documents: list[list[int]],
-    word1_id: int,
-    word2_id: int,
+    window_lenght: int = 10,
+    stride: int = 1,
 ):
-    # TODO: Implement this function
-    return np.random.randint(0, 10)
+    corpus = list(itertools.chain(*documents))
+    p_i, p_j, p_ij = 0, 0, 0
+    total_num_of_windows = (len(corpus) - window_lenght + 1) / stride
+
+    if w1_id == w2_id:
+        pmi_score = 1
+    else:
+        for i in range(0, len(corpus) - window_lenght, stride):
+            if w1_id in corpus[i : i + window_lenght]:
+                p_i += 1
+            if w2_id in corpus[i : i + window_lenght]:
+                p_j += 1
+            if (
+                w1_id in corpus[i : i + window_lenght]
+                and w2_id in corpus[i : i + window_lenght]
+            ):
+                p_ij += 1
+        pmi_score = np.log(p_ij / (p_i * p_j * total_num_of_windows))
+    return pmi_score
 
 
 def tf_idf(
@@ -18,11 +38,27 @@ def tf_idf(
     document_index: int,
     word_id: int,
 ):
-    # TODO: Implement this function
-    return np.random.randint(0, 10)
+    """
+    t — term (word)
+    d — document (set of words)
+    N — count of corpus
+    corpus — the total document set
+    """
+    corpus = np.array(list(itertools.chain(*documents)))
+
+    d = np.array(documents[document_index])
+    tf = np.count_nonzero(d == word_id) / len(d)
+    df = np.count_nonzero(corpus == word_id) / len(d)
+    idf = np.log(len(documents) / (df + 1))
+    tf_idf_score = tf * idf
+    return tf_idf_score
 
 
-def generate_adj_matrix(documents: list[list[int]]) -> np.ndarray:
+def generate_adj_matrix(
+    documents: list[list[int]],
+    window_lenght: int = 10,
+    stride: int = 1,
+) -> np.ndarray:
     doc_vocabs = [set(doc) for doc in documents]
     all_vocab = list(set.union(*doc_vocabs))
 
@@ -46,6 +82,8 @@ def generate_adj_matrix(documents: list[list[int]]) -> np.ndarray:
                 documents,
                 word1,
                 word2,
+                window_lenght=window_lenght,
+                stride=stride,
             )
     pmi_matrix = pmi_matrix + np.eye(pmi_matrix.shape[0])
 
