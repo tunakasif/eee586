@@ -34,8 +34,8 @@ def get_token_encodings(
 
     pkl_enc_path = Path.joinpath(
         PKL_DIR,
-        BERT_DEFAULT_MODEL_NAME,
         f"{dataset_name.replace('/', '_')}",
+        BERT_DEFAULT_MODEL_NAME,
     )
     Path.mkdir(pkl_enc_path, exist_ok=True, parents=True)
     sub_pkl_enc_path = Path.joinpath(pkl_enc_path, f"{sub_dataset_name}_token_enc.pkl")
