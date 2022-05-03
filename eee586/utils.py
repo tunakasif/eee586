@@ -3,16 +3,17 @@ import pickle
 from pathlib import Path
 import numpy as np
 import itertools
+from tqdm import trange, tqdm
 
 
 def pmi(
+    corpus: np.ndarray,
+    documents: list[list[int]],
     w1_id: int,
     w2_id: int,
-    documents: list[list[int]],
     window_lenght: int = 10,
     stride: int = 1,
 ):
-    corpus = list(itertools.chain(*documents))
     p_i, p_j, p_ij = 0, 0, 0
     total_num_of_windows = (len(corpus) - window_lenght + 1) / stride
 
@@ -29,11 +30,16 @@ def pmi(
                 and w2_id in corpus[i : i + window_lenght]
             ):
                 p_ij += 1
-        pmi_score = np.log(p_ij / (p_i * p_j * total_num_of_windows))
+
+        if p_ij == 0 or p_i == 0 or p_j == 0:
+            pmi_score = 0
+        else:
+            pmi_score = np.log(p_ij / (p_i * p_j * total_num_of_windows))
     return pmi_score
 
 
 def tf_idf(
+    corpus: np.ndarray,
     documents: list[list[int]],
     document_index: int,
     word_id: int,
@@ -44,8 +50,6 @@ def tf_idf(
     N — count of corpus
     corpus — the total document set
     """
-    corpus = np.array(list(itertools.chain(*documents)))
-
     d = np.array(documents[document_index])
     tf = np.count_nonzero(d == word_id) / len(d)
     df = np.count_nonzero(corpus == word_id) / len(d)
@@ -56,33 +60,37 @@ def tf_idf(
 
 def generate_adj_matrix(
     documents: list[list[int]],
-    window_lenght: int = 10,
+    window_length: int = 10,
     stride: int = 1,
 ) -> np.ndarray:
+    corpus = np.array(list(itertools.chain(*documents)))
     doc_vocabs = [set(doc) for doc in documents]
     all_vocab = list(set.union(*doc_vocabs))
 
     n_docs = len(documents)
     n_vocab = len(all_vocab)
+    print(n_docs, n_vocab)
 
     tf_idf_matrix = np.zeros((n_docs, n_vocab))
-    for i in range(n_docs):
-        for j, word in enumerate(all_vocab):
+    for i in trange(n_docs):
+        for j, word in enumerate(tqdm(all_vocab)):
             tf_idf_matrix[i, j] = tf_idf(
+                corpus,
                 documents,
                 i,
                 word,
             )
 
     pmi_matrix = np.zeros((n_vocab, n_vocab))
-    for i, word1 in enumerate(all_vocab):
+    for i, word1 in enumerate(tqdm(all_vocab)):
         for j in range(i + 1, n_vocab):
             word2 = all_vocab[j]
             pmi_matrix[i, j] = pmi_matrix[j, i] = pmi(
+                corpus,
                 documents,
                 word1,
                 word2,
-                window_lenght=window_lenght,
+                window_lenght=window_length,
                 stride=stride,
             )
     pmi_matrix = pmi_matrix + np.eye(pmi_matrix.shape[0])
