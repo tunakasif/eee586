@@ -38,17 +38,22 @@ def get_token_encodings(
         f"{dataset_name.replace('/', '_')}",
     )
     Path.mkdir(pkl_enc_path, exist_ok=True, parents=True)
-
-    dataset = load_dataset(dataset_name)
-    tokenizer = BertTokenizer.from_pretrained(model_name)
-
-    sub_dataset = dataset.get(f"{sub_dataset_name}")
     sub_pkl_enc_path = Path.joinpath(pkl_enc_path, f"{sub_dataset_name}_token_enc.pkl")
-    sub_token_enc_dict = picklize(
-        _get_input_ids_and_labels,
-        sub_pkl_enc_path,
-        tokenizer,
-        sub_dataset,
-        enforce=enforce_recompute,
-    )
+    if sub_pkl_enc_path.exists() and not enforce_recompute:
+        sub_token_enc_dict = picklize(
+            None,
+            sub_pkl_enc_path,
+        )
+    else:
+        dataset = load_dataset(dataset_name)
+        tokenizer = BertTokenizer.from_pretrained(model_name)
+
+        sub_dataset = dataset.get(f"{sub_dataset_name}")
+        sub_token_enc_dict = picklize(
+            _get_input_ids_and_labels,
+            sub_pkl_enc_path,
+            tokenizer,
+            sub_dataset,
+            enforce=enforce_recompute,
+        )
     return sub_token_enc_dict
