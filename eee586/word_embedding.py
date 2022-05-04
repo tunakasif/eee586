@@ -5,7 +5,7 @@ from tqdm import tqdm
 from typing import List, Dict
 
 from eee586 import BERT_DEFAULT_MODEL_NAME, PKL_DIR
-from eee586.utils import picklize
+from eee586.utils.generic import picklize
 
 
 def _get_input_ids_and_labels(tokenizer, dataset) -> Dict[str, List[int]]:

@@ -11,7 +11,7 @@ from transformers import (
 )
 
 from eee586 import BERT_MODEL_DIR, BERT_DEFAULT_MODEL_NAME
-from eee586.utils import get_time
+from eee586.utils.generic import get_time
 
 
 def get_num_label(dataset: DatasetDict) -> int:
