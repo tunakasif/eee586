@@ -1,6 +1,8 @@
 from typing import Tuple, Dict, List
 import numpy as np
 from numba import njit
+from numba.core import types as numba_types
+from numba.typed import Dict as NumbaDict
 from itertools import chain, combinations
 from tqdm import tqdm, trange
 from pathlib import Path
@@ -8,6 +10,20 @@ from pathlib import Path
 from eee586 import PKL_DIR
 from eee586.word_embedding import get_token_encodings
 from eee586.utils.generic import picklize
+
+WORDS_OCC_KEY_TYPE = numba_types.int64
+WORD_PAIRS_OCC_KEY_TYPE = numba_types.Tuple((numba_types.int64, numba_types.int64))
+WORD_OCC_VAL_TYPE = numba_types.int64
+
+
+def _convert_dict_to_numba_dict(d, key_type, value_type) -> NumbaDict:
+    nd = NumbaDict.empty(
+        key_type=key_type,
+        value_type=value_type,
+    )
+    for k, v in d.items():
+        nd[k] = v
+    return nd
 
 
 def _get_windows(
@@ -65,7 +81,7 @@ def get_words_occurrence(
 
 def _get_words_occurrence(windows) -> Dict[int, int]:
     words_occurrence = {}
-    for window in tqdm(windows):
+    for window in tqdm(windows, desc="Words Occurrence", unit="window"):
         window_words_unique = np.unique(window)
         for word in window_words_unique:
             words_occurrence[word] = words_occurrence.get(word, 0) + 1
@@ -99,7 +115,7 @@ def get_word_pairs_occurrence(
 
 def _get_word_pairs_occurrence(windows) -> Dict[Tuple[int, int], int]:
     word_pairs_occurrence = {}
-    for window in tqdm(windows):
+    for window in tqdm(windows, desc="Words Occurrence", unit="window"):
         window_words_unique = np.unique(window)
         window_word_pairs = combinations(window_words_unique, 2)
         for pair in window_word_pairs:
@@ -138,14 +154,25 @@ def get_pmi_matrix(
         words_occurrence_path,
         windows,
     )
-
     word_pairs_occurrence_path = Path(dataset_dir, "word_pairs_occurrence.pkl")
     word_pairs_occurrence = picklize(
         _get_word_pairs_occurrence,
         word_pairs_occurrence_path,
         windows,
     )
+    print("Converting Numba Dict")
+    words_occurrence = _convert_dict_to_numba_dict(
+        words_occurrence,
+        key_type=WORDS_OCC_KEY_TYPE,
+        value_type=WORD_OCC_VAL_TYPE,
+    )
+    word_pairs_occurrence = _convert_dict_to_numba_dict(
+        word_pairs_occurrence,
+        key_type=WORD_PAIRS_OCC_KEY_TYPE,
+        value_type=WORD_OCC_VAL_TYPE,
+    )
 
+    print("Computing PMI")
     pmi_matrix_path = Path(dataset_dir, "pmi_matrix.pkl")
     pmi_matrix = picklize(
         _get_pmi_matrix,
@@ -159,6 +186,7 @@ def get_pmi_matrix(
     return pmi_matrix
 
 
+@njit()
 def _get_pmi_matrix(
     all_vocab: np.ndarray,
     words_occurrence: Dict[int, int],
@@ -167,7 +195,7 @@ def _get_pmi_matrix(
 ) -> np.ndarray:
     n_vocab = len(all_vocab)
     pmi_matrix = np.zeros((n_vocab, n_vocab))
-    for i in trange(n_vocab):
+    for i in range(n_vocab):
         for j in range(i + 1, n_vocab):
             word1 = all_vocab[i]
             word2 = all_vocab[j]
@@ -222,7 +250,7 @@ def generate_adj_matrix(
     print(n_docs, n_vocab)
 
     tf_idf_matrix = np.zeros((n_docs, n_vocab))
-    for i in trange(n_docs):
+    for i in trange(n_docs, desc="TF-IDF"):
         for j, word in enumerate(tqdm(all_vocab, leave=False)):
             tf_idf_matrix[i, j] = tf_idf(corpus, documents, i, word)
 
