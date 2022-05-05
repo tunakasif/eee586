@@ -6,8 +6,9 @@ from numba import int64 as numba_int64
 from numba.core import types as numba_types
 from numba.typed import Dict as NumbaDict
 from itertools import chain, combinations
-from tqdm import tqdm, trange
+from tqdm import tqdm
 from pathlib import Path
+import scipy.sparse as sps
 
 from eee586 import PKL_DIR
 from eee586.word_embedding import get_token_encodings
@@ -30,6 +31,31 @@ def count_nonzero(vector: np.ndarray) -> int:
         if value != 0:
             count += 1
     return count
+
+
+@njit()
+def get_tfidf_coo_vectors(
+    document_count: int,
+    all_vocab: np.ndarray,
+    tf_dict: NumbaDict,
+    df_dict: NumbaDict,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+
+    data_size = len(tf_dict)
+    row = np.zeros((data_size,))
+    col = np.zeros((data_size,))
+    data = np.zeros((data_size,))
+
+    word_idx = {word: idx for idx, word in enumerate(all_vocab)}
+    for i, ((doc_id, word), tf) in enumerate(tf_dict.items()):
+        df = df_dict[word]
+        idf = _idf(df, document_count)
+        curr_word_idx = word_idx[word]
+
+        row[i] = doc_id
+        col[i] = curr_word_idx
+        data[i] = tf * idf
+    return row, col, data
 
 
 def get_tfidf_matrix(
@@ -70,14 +96,8 @@ def _get_tfidf_matrix(
                 df_dict[word] = df_dict.get(word, 0) + 1
 
     N = len(documents)
-    tfidf = np.zeros((N, len(all_vocab)))
-    word_idx = {word: idx for idx, word in enumerate(all_vocab)}
-    for (doc_id, word), tf in tf_dict.items():
-        df = df_dict[word]
-        idf = _idf(df, N)
-        curr_word_idx = word_idx[word]
-        tfidf[doc_id, curr_word_idx] = tf * idf
-    return tfidf
+    row, col, data = get_tfidf_coo_vectors(N, all_vocab, tf_dict, df_dict)
+    return sps.coo_matrix((data, (row, col)), shape=(N, len(all_vocab)))
 
 
 def _convert_dict_to_numba_dict(d, key_type, value_type) -> NumbaDict:
@@ -251,14 +271,14 @@ def get_pmi_matrix(
 
 
 @njit()
-def _get_pmi_matrix(
+def _get_pmi_coo_vectors(
     all_vocab: np.ndarray,
     words_occurrence: Dict[int, int],
     word_pairs_occurrence: Dict[Tuple[int, int], int],
     window_size: int,
 ) -> np.ndarray:
     n_vocab = len(all_vocab)
-    pmi_matrix = np.zeros((n_vocab, n_vocab))
+    pmi_dict = {}
     for i in range(n_vocab):
         for j in range(i + 1, n_vocab):
             word1 = all_vocab[i]
@@ -268,14 +288,43 @@ def _get_pmi_matrix(
             n_j = words_occurrence.get(word2, 0)
             n_ij = word_pairs_occurrence.get((word1, word2), 0)
 
-            pmi_matrix[i, j] = pmi(
+            pmi_score = pmi(
                 n_i=n_i,
                 n_j=n_j,
                 n_ij=n_ij,
                 n_win=window_size,
                 relu=True,
             )
-    pmi_matrix = pmi_matrix + pmi_matrix.T + np.eye(pmi_matrix.shape[0])
+            if pmi_score > 0:
+                pmi_dict[(i, j)] = pmi_score
+
+    data_size = len(pmi_dict)
+    row = np.zeros((data_size,))
+    col = np.zeros((data_size,))
+    data = np.zeros((data_size,))
+
+    for k, ((i, j), pmi_score) in enumerate(pmi_dict.items()):
+        row[k] = i
+        col[k] = j
+        data[k] = pmi_score
+    return row, col, data
+
+
+def _get_pmi_matrix(
+    all_vocab: np.ndarray,
+    words_occurrence: Dict[int, int],
+    word_pairs_occurrence: Dict[Tuple[int, int], int],
+    window_size: int,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    row, col, data = _get_pmi_coo_vectors(
+        all_vocab,
+        words_occurrence,
+        word_pairs_occurrence,
+        window_size,
+    )
+    n_vocab = len(all_vocab)
+    pmi_matrix_upper = sps.coo_matrix((data, (row, col)), shape=(n_vocab, n_vocab))
+    pmi_matrix = pmi_matrix_upper + pmi_matrix_upper.T + sps.identity(n_vocab)
     return pmi_matrix
 
 
@@ -301,11 +350,11 @@ def generate_adj_matrix(
     tf_idf_matrix = get_tfidf_matrix(dataset_dir, documents, all_vocab)
     pmi_matrix = get_pmi_matrix(dataset_dir, documents, window_size, stride)
 
-    upper_left = np.eye(n_docs)
+    upper_left = sps.identity(n_docs)
     upper_right = tf_idf_matrix
     lower_left = tf_idf_matrix.T
     lower_right = pmi_matrix
-    adj_matrix = np.block(
+    adj_matrix = sps.bmat(
         [
             [upper_left, upper_right],
             [lower_left, lower_right],
@@ -328,7 +377,7 @@ def main(
     Path.mkdir(dataset_dir, parents=True, exist_ok=True)
     train_token_enc = get_token_encodings("train")
     documents = train_token_enc.get("input_ids")
-    documents = documents[:200]
+    documents = documents[:2000]
 
     A = generate_adj_matrix(
         documents=documents,
@@ -337,10 +386,8 @@ def main(
         stride=stride,
     )
 
-    nz_count = np.count_nonzero(A)
+    print(type(A))
     print(f"Shape, Size: {A.shape}, {A.size}")
-    print(f"Non-zero count: {nz_count}/{A.size}")
-    print(f"Non-zero ratio: {(A != 0).sum() / A.size * 100:.2f}%")
 
 
 if __name__ == "__main__":
