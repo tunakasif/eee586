@@ -8,7 +8,7 @@ from numba.typed import Dict as NumbaDict
 from itertools import chain, combinations
 from tqdm import tqdm, trange
 from pathlib import Path
-from scipy.sparse import coo_matrix
+import scipy.sparse as sps
 
 from eee586 import PKL_DIR
 from eee586.word_embedding import get_token_encodings
@@ -97,7 +97,7 @@ def _get_tfidf_matrix(
 
     N = len(documents)
     row, col, data = get_tfidf_coo_vectors(N, all_vocab, tf_dict, df_dict)
-    return coo_matrix((data, (row, col)), shape=(N, len(all_vocab))).toarray()
+    return sps.coo_matrix((data, (row, col)), shape=(N, len(all_vocab))).toarray()
 
 
 def _convert_dict_to_numba_dict(d, key_type, value_type) -> NumbaDict:
@@ -271,14 +271,14 @@ def get_pmi_matrix(
 
 
 @njit()
-def _get_pmi_matrix(
+def _get_pmi_coo_vectors(
     all_vocab: np.ndarray,
     words_occurrence: Dict[int, int],
     word_pairs_occurrence: Dict[Tuple[int, int], int],
     window_size: int,
 ) -> np.ndarray:
     n_vocab = len(all_vocab)
-    pmi_matrix = np.zeros((n_vocab, n_vocab))
+    pmi_dict = {}
     for i in range(n_vocab):
         for j in range(i + 1, n_vocab):
             word1 = all_vocab[i]
@@ -288,15 +288,44 @@ def _get_pmi_matrix(
             n_j = words_occurrence.get(word2, 0)
             n_ij = word_pairs_occurrence.get((word1, word2), 0)
 
-            pmi_matrix[i, j] = pmi(
+            pmi_score = pmi(
                 n_i=n_i,
                 n_j=n_j,
                 n_ij=n_ij,
                 n_win=window_size,
                 relu=True,
             )
-    pmi_matrix = pmi_matrix + pmi_matrix.T + np.eye(pmi_matrix.shape[0])
-    return pmi_matrix
+            if pmi_score > 0:
+                pmi_dict[(i, j)] = pmi_score
+
+    data_size = len(pmi_dict)
+    row = np.zeros((data_size,))
+    col = np.zeros((data_size,))
+    data = np.zeros((data_size,))
+
+    for k, ((i, j), pmi_score) in enumerate(pmi_dict.items()):
+        row[k] = i
+        col[k] = j
+        data[k] = pmi_score
+    return row, col, data
+
+
+def _get_pmi_matrix(
+    all_vocab: np.ndarray,
+    words_occurrence: Dict[int, int],
+    word_pairs_occurrence: Dict[Tuple[int, int], int],
+    window_size: int,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    row, col, data = _get_pmi_coo_vectors(
+        all_vocab,
+        words_occurrence,
+        word_pairs_occurrence,
+        window_size,
+    )
+    n_vocab = len(all_vocab)
+    pmi_matrix_upper = sps.coo_matrix((data, (row, col)), shape=(n_vocab, n_vocab))
+    pmi_matrix = pmi_matrix_upper + pmi_matrix_upper.T + sps.identity(n_vocab)
+    return pmi_matrix.toarray()
 
 
 def generate_adj_matrix(
@@ -348,7 +377,7 @@ def main(
     Path.mkdir(dataset_dir, parents=True, exist_ok=True)
     train_token_enc = get_token_encodings("train")
     documents = train_token_enc.get("input_ids")
-    documents = documents[:200]
+    documents = documents[:2000]
 
     A = generate_adj_matrix(
         documents=documents,
