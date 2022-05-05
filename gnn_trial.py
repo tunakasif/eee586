@@ -11,7 +11,6 @@ from torch_sparse import SparseTensor
 
 #%matplotlib inline
 # import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
 from eee586 import PKL_DIR, WORK_DIR
 from eee586.word_embedding import get_token_encodings
 from eee586.utils.adjacency import generate_adj_matrix
@@ -41,14 +40,12 @@ def test_model(data, model, type):
     return pred, acc * 100
 
 
-def get_edge_values(A):
-    smat = csr_matrix(A)
-    c, n_nodes = smat.tocoo(), A.shape[0]
+def get_edge_values(c):
     row, col = tensor(c.row).reshape(-1, 1), tensor(c.col).reshape(-1, 1)
     data = c.data
     edge_index = torch.concat((row, col), dim=1).T.long().contiguous()
     edge_attr = tensor(data).reshape(-1)
-    return edge_index, edge_attr, n_nodes
+    return edge_index, edge_attr
 
 
 def get_graph_data(
@@ -63,22 +60,27 @@ def get_graph_data(
     train_docs, test_docs = train_encods.get("input_ids"), test_encods.get("input_ids")
     train_labels, test_labels = train_encods.get("labels"), test_encods.get("labels")
 
-    if n_train is None and n_test is None:
-        n_train, n_test = len(train_docs), len(test_docs)
+    if n_test is None:
+        n_test = len(test_docs)
+    
+    if n_train is None:
+        n_train = len(train_docs),
 
     documents = train_docs[:n_train] + test_docs[:n_test]
     labels = train_labels[:n_train] + test_labels[:n_test]
+    doc_vocabs = [set(doc) for doc in documents]
+    all_vocab = list(set.union(*doc_vocabs))
+    n_nodes =len(all_vocab) + len(documents)
 
-    A = generate_adj_matrix(
+    c = generate_adj_matrix(
         documents,
         dataset_name=f"SetFit/20_newsgroups_ntrain{n_train}_ntest{n_test}",
         window_size=window_size,
         stride=stride,
     )
-    print(A)
-    edge_index, edge_attr, n_nodes = get_edge_values(A)
-    del(A)
-    x = torch.eye(n_nodes, int(n_nodes / 10))
+    edge_index, edge_attr = get_edge_values(c)
+    del(c)
+    x = torch.eye(n_nodes,1)
     y =tensor(labels + (n_nodes - len(labels)) * [0])
 
     data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
@@ -90,75 +92,75 @@ def get_graph_data(
     return data
 
 
-def get_graph_data_train(
-    train_encods: dict,
-    n_train: int = None,
-    ratio=0.8,
-    window_size=10,
-    stride=1,
-) -> Data:
+# def get_graph_data_train(
+#     train_encods: dict,
+#     n_train: int = None,
+#     ratio=0.8,
+#     window_size=10,
+#     stride=1,
+# ) -> Data:
 
-    """
-    n_train: used to select subset of train dataset to fit the memory
-    ratio: used to divide train set to train and validation
-    """
-    train_docs, train_labels = train_encods.get("input_ids"), train_encods.get("labels")
-    if n_train is None:
-        n_train = len(train_docs)
-    train_docs, train_labels = train_docs[:n_train], train_labels[:n_train]
+#     """
+#     n_train: used to select subset of train dataset to fit the memory
+#     ratio: used to divide train set to train and validation
+#     """
+#     train_docs, train_labels = train_encods.get("input_ids"), train_encods.get("labels")
+#     if n_train is None:
+#         n_train = len(train_docs)
+#     train_docs, train_labels = train_docs[:n_train], train_labels[:n_train]
 
-    idx = int(len(train_docs) * (ratio))
+#     idx = int(len(train_docs) * (ratio))
 
-    documents, labels = train_docs, train_labels
+#     documents, labels = train_docs, train_labels
 
-    train_docs, val_docs = train_docs[:idx], train_docs[idx:]
-    train_labels, val_labels = train_labels[:idx], train_labels[idx:]
-    n_val, n_train = len(val_docs), len(train_docs)
+#     train_docs, val_docs = train_docs[:idx], train_docs[idx:]
+#     train_labels, val_labels = train_labels[:idx], train_labels[idx:]
+#     n_val, n_train = len(val_docs), len(train_docs)
 
-    A = generate_adj_matrix(
-        documents,
-        dataset_name=f"SetFit/20_newsgroups_ntrain{n_train}_tv_ratio{ratio}",
-        window_size=window_size,
-        stride=stride,
-    )
-    edge_index, edge_attr, n_nodes = get_edge_values(A)
-    x, y = torch.eye(n_nodes,300), tensor(labels + (n_nodes - len(labels)) * [0])
+#     A = generate_adj_matrix(
+#         documents,
+#         dataset_name=f"SetFit/20_newsgroups_ntrain{n_train}_tv_ratio{ratio}",
+#         window_size=window_size,
+#         stride=stride,
+#     )
+#     edge_index, edge_attr, n_nodes = get_edge_values(A)
+#     x, y = torch.eye(n_nodes,300), tensor(labels + (n_nodes - len(labels)) * [0])
 
-    data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
+#     data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
 
-    data.train_idx = tensor(n_train * [True] + (n_nodes - n_train) * [False])
-    data.test_idx = tensor(
-        n_train * [False] + n_val * [True] + (n_nodes - (n_train + n_val)) * [False]
-    )
-    return data
+#     data.train_idx = tensor(n_train * [True] + (n_nodes - n_train) * [False])
+#     data.test_idx = tensor(
+#         n_train * [False] + n_val * [True] + (n_nodes - (n_train + n_val)) * [False]
+#     )
+#     return data
 
 
-def get_graph_data_test(
-    test_encods: dict,
-    n_test: int = None,
-    window_size=10,
-    stride=1,
-) -> Data:
-    test_docs, test_labels = test_encods.get("input_ids"), test_encods.get("labels")
-    if n_test is None:
-        n_test = len(test_docs)
-    documents, labels = test_docs[:n_test], test_labels[:n_test]
+# def get_graph_data_test(
+#     test_encods: dict,
+#     n_test: int = None,
+#     window_size=10,
+#     stride=1,
+# ) -> Data:
+#     test_docs, test_labels = test_encods.get("input_ids"), test_encods.get("labels")
+#     if n_test is None:
+#         n_test = len(test_docs)
+#     documents, labels = test_docs[:n_test], test_labels[:n_test]
 
-    A = generate_adj_matrix(
-        documents,
-        dataset_name=f"SetFit/20_newsgroups_ntest{n_test}",
-        window_size=window_size,
-        stride=stride,
-    )
+#     A = generate_adj_matrix(
+#         documents,
+#         dataset_name=f"SetFit/20_newsgroups_ntest{n_test}",
+#         window_size=window_size,
+#         stride=stride,
+#     )
 
-    edge_index, edge_attr, n_nodes = get_edge_values(A)
+#     edge_index, edge_attr, n_nodes = get_edge_values(A)
 
-    x, y = torch.eye(n_nodes), tensor(labels + (n_nodes - len(labels)) * [0])
-    data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
-    data.test_idx = tensor(n_test * [True] + (n_nodes - n_test) * [False])
-    data.train_idx = tensor(n_nodes * [False])
+#     x, y = torch.eye(n_nodes), tensor(labels + (n_nodes - len(labels)) * [0])
+#     data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
+#     data.test_idx = tensor(n_test * [True] + (n_nodes - n_test) * [False])
+#     data.train_idx = tensor(n_nodes * [False])
 
-    return data
+#     return data
 
 
 # %%
@@ -211,7 +213,7 @@ def train_strategy(train_encods, test_encods, n_train=None,n_test = None,togethe
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.cuda.empty_cache()
 
-    if together == True:
+    if together:
         data = get_graph_data(
             train_encods,
             test_encods,
@@ -222,16 +224,16 @@ def train_strategy(train_encods, test_encods, n_train=None,n_test = None,togethe
         ).to(device)
         data_train = data
 
-    else:
-        data_train = get_graph_data_train(
-            train_encods, n_train=100, ratio=0.8, window_size=10, stride=1
-        ).to(device)
-        data_test = get_graph_data_test(
-            test_encods, n_test=40, window_size=10, stride=1
-        ).to(device)
+    # else:
+    #     data_train = get_graph_data_train(
+    #         train_encods, n_train=100, ratio=0.8, window_size=10, stride=1
+    #     ).to(device)
+    #     data_test = get_graph_data_test(
+    #         test_encods, n_test=40, window_size=10, stride=1
+    #     ).to(device)
 
-    model = GCN(data=data_train, hidden_channels=100).double().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.005,weight_decay=5e-5)
+    model = GCN(data=data_train, hidden_channels=200).double().to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01,weight_decay=0)
     criterion = torch.nn.CrossEntropyLoss()
     for epoch in range(0, 5000):
         loss = train_func(data_train, model, optimizer, criterion)
@@ -242,13 +244,13 @@ def train_strategy(train_encods, test_encods, n_train=None,n_test = None,togethe
                 print(f"Train Accuracy: {train_acc:.4f}, Test Accuracy: {test_acc:.4f}")
                 print(f"Epoch: {epoch:03d}, Loss: {loss:.4f}")
 
-        else:
-            _, train_acc = test_model(data_train, model, type="train")
-            _, test_acc = test_model(data_test, model, type="test")
+        # else:
+        #     _, train_acc = test_model(data_train, model, type="train")
+        #     _, test_acc = test_model(data_test, model, type="test")
 
-            print(f"Train Accuracy: {train_acc:.4f}, Test Accuracy: {test_acc:.4f}")
-            if epoch % 10 == 0:
-                print(f"Epoch: {epoch:03d}, Loss: {loss:.4f}")
+        #     print(f"Train Accuracy: {train_acc:.4f}, Test Accuracy: {test_acc:.4f}")
+        #     if epoch % 10 == 0:
+        #         print(f"Epoch: {epoch:03d}, Loss: {loss:.4f}")
     return model
 
 
@@ -256,6 +258,6 @@ def train_strategy(train_encods, test_encods, n_train=None,n_test = None,togethe
 train_encods = get_token_encodings("train")
 test_encods = get_token_encodings("test")
 
-model = train_strategy(train_encods, test_encods, n_train= 2000,n_test = None,together=True)
+model = train_strategy(train_encods, test_encods, n_train= 5000,n_test = 2000,together=True)
 
 # %%
