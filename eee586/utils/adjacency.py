@@ -1,6 +1,8 @@
 from typing import Tuple, Dict, List
 import numpy as np
-from numba import njit
+from numba import njit, vectorize
+from numba import float64 as numba_float64
+from numba import int64 as numba_int64
 from numba.core import types as numba_types
 from numba.typed import Dict as NumbaDict
 from itertools import chain, combinations
@@ -14,6 +16,58 @@ from eee586.utils.generic import picklize
 WORDS_OCC_KEY_TYPE = numba_types.int64
 WORD_PAIRS_OCC_KEY_TYPE = numba_types.Tuple((numba_types.int64, numba_types.int64))
 WORD_OCC_VAL_TYPE = numba_types.int64
+
+
+@vectorize([numba_float64(numba_int64, numba_int64)])
+def _idf(df: numba_int64, N: numba_int64) -> numba_float64:
+    return np.log(N / (1 + df))
+
+
+def get_tfidf_matrix(
+    dataset_dir: Path,
+    documents: List[List[int]],
+    all_vocab: np.ndarray,
+):
+    tfidf_matrix_path = Path(dataset_dir, "tfidf_matrix.pkl")
+    tfidf_matrix = picklize(
+        _get_tfidf_matrix,
+        tfidf_matrix_path,
+        documents,
+        all_vocab,
+    )
+    return tfidf_matrix
+
+
+def _get_tfidf_matrix(
+    documents: List[List[int]],
+    all_vocab: np.ndarray,
+) -> np.ndarray:
+    tf_dict = NumbaDict.empty(
+        key_type=WORD_PAIRS_OCC_KEY_TYPE,
+        value_type=numba_types.float64,
+    )
+
+    df_dict = NumbaDict.empty(
+        key_type=WORDS_OCC_KEY_TYPE,
+        value_type=WORD_OCC_VAL_TYPE,
+    )
+
+    for word in tqdm(all_vocab, desc="TF-IDF", unit="word"):
+        for doc_id, doc in enumerate(documents):
+            tf = np.count_nonzero(doc == word) / len(doc)
+            if tf > 0:
+                tf_dict[(doc_id, word)] = tf
+                df_dict[word] = df_dict.get(word, 0) + 1
+
+    N = len(documents)
+    tfidf = np.zeros((N, len(all_vocab)))
+    word_idx = {word: idx for idx, word in enumerate(all_vocab)}
+    for (doc_id, word), tf in tf_dict.items():
+        df = df_dict[word]
+        idf = _idf(df, N)
+        curr_word_idx = word_idx[word]
+        tfidf[doc_id, curr_word_idx] = tf * idf
+    return tfidf
 
 
 def _convert_dict_to_numba_dict(d, key_type, value_type) -> NumbaDict:
@@ -215,44 +269,18 @@ def _get_pmi_matrix(
     return pmi_matrix
 
 
-def tf_idf(
-    corpus: np.ndarray,
-    documents: list[list[int]],
-    document_index: int,
-    word_id: int,
-):
-    """
-    t — term (word)
-    d — document (set of words)
-    N — count of corpus
-    corpus — the total document set
-    """
-    d = np.array(documents[document_index])
-    tf = np.count_nonzero(d == word_id) / len(d)
-    df = np.count_nonzero(corpus == word_id) / len(d)
-    idf = np.log(len(documents) / (df + 1))
-    tf_idf_score = tf * idf
-    return tf_idf_score
-
-
 def generate_adj_matrix(
     documents: list[list[int]],
     dataset_name: str = "SetFit/20_newsgroups",
     window_size: int = 20,
     stride: int = 1,
 ) -> np.ndarray:
-    corpus = np.array(list(chain(*documents)))
     doc_vocabs = [set(doc) for doc in documents]
-    all_vocab = list(set.union(*doc_vocabs))
+    all_vocab = np.array(list(set.union(*doc_vocabs)))
 
     n_docs = len(documents)
     n_vocab = len(all_vocab)
     print(n_docs, n_vocab)
-
-    tf_idf_matrix = np.zeros((n_docs, n_vocab))
-    for i in trange(n_docs, desc="TF-IDF"):
-        for j, word in enumerate(tqdm(all_vocab, leave=False)):
-            tf_idf_matrix[i, j] = tf_idf(corpus, documents, i, word)
 
     dataset_dir = Path.joinpath(
         PKL_DIR,
@@ -260,6 +288,7 @@ def generate_adj_matrix(
         f"win{window_size}_s{stride}",
     )
     Path.mkdir(dataset_dir, parents=True, exist_ok=True)
+    tf_idf_matrix = get_tfidf_matrix(dataset_dir, documents, all_vocab)
     pmi_matrix = get_pmi_matrix(dataset_dir, documents, window_size, stride)
 
     upper_left = np.eye(n_docs)
@@ -289,15 +318,19 @@ def main(
     Path.mkdir(dataset_dir, parents=True, exist_ok=True)
     train_token_enc = get_token_encodings("train")
     documents = train_token_enc.get("input_ids")
-    documents = documents[:100]
+    documents = documents[:200]
 
-    pmi_matrix = get_pmi_matrix(
-        dataset_dir=dataset_dir,
+    A = generate_adj_matrix(
         documents=documents,
+        dataset_name=dataset_name,
         window_size=window_size,
         stride=stride,
     )
-    print(pmi_matrix)
+
+    nz_count = np.count_nonzero(A)
+    print(f"Shape, Size: {A.shape}, {A.size}")
+    print(f"Non-zero count: {nz_count}/{A.size}")
+    print(f"Non-zero ratio: {(A != 0).sum() / A.size * 100:.2f}%")
 
 
 if __name__ == "__main__":
