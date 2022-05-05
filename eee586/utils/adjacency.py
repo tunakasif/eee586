@@ -329,7 +329,7 @@ def _get_pmi_matrix(
 
 
 def generate_adj_matrix(
-    documents: list[list[int]],
+    documents: List[List[int]],
     dataset_name: str = "SetFit/20_newsgroups",
     window_size: int = 20,
     stride: int = 1,
@@ -347,10 +347,30 @@ def generate_adj_matrix(
         f"win{window_size}_s{stride}",
     )
     Path.mkdir(dataset_dir, parents=True, exist_ok=True)
+    adj_matrix_path = Path(dataset_dir, "adj_matrix.pkl")
+    adj_matrix = picklize(
+        _generate_adj_matrix,
+        adj_matrix_path,
+        dataset_dir,
+        documents,
+        all_vocab,
+        window_size,
+        stride,
+    )
+    return adj_matrix
+
+
+def _generate_adj_matrix(
+    dataset_dir: Path,
+    documents: List[List[int]],
+    all_vocab: np.ndarray,
+    window_size: int = 20,
+    stride: int = 1,
+) -> np.ndarray:
     tf_idf_matrix = get_tfidf_matrix(dataset_dir, documents, all_vocab)
     pmi_matrix = get_pmi_matrix(dataset_dir, documents, window_size, stride)
 
-    upper_left = sps.identity(n_docs)
+    upper_left = sps.identity(len(documents))
     upper_right = tf_idf_matrix
     lower_left = tf_idf_matrix.T
     lower_right = pmi_matrix
