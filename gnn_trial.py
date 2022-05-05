@@ -6,8 +6,8 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GATConv
 from scipy.sparse import random
-from torch import tensor
-
+from torch import tensor 
+from torch_sparse import SparseTensor
 
 #%matplotlib inline
 # import matplotlib.pyplot as plt
@@ -63,7 +63,7 @@ def get_graph_data(
     train_docs, test_docs = train_encods.get("input_ids"), test_encods.get("input_ids")
     train_labels, test_labels = train_encods.get("labels"), test_encods.get("labels")
 
-    if n_train and n_test is None:
+    if n_train is None and n_test is None:
         n_train, n_test = len(train_docs), len(test_docs)
 
     documents = train_docs[:n_train] + test_docs[:n_test]
@@ -77,8 +77,9 @@ def get_graph_data(
     )
     print(A)
     edge_index, edge_attr, n_nodes = get_edge_values(A)
-
-    x, y = torch.eye(n_nodes), tensor(labels + (n_nodes - len(labels)) * [0])
+    del(A)
+    x = torch.eye(n_nodes, int(n_nodes / 10))
+    y =tensor(labels + (n_nodes - len(labels)) * [0])
 
     data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
 
@@ -121,7 +122,7 @@ def get_graph_data_train(
         stride=stride,
     )
     edge_index, edge_attr, n_nodes = get_edge_values(A)
-    x, y = torch.eye(n_nodes), tensor(labels + (n_nodes - len(labels)) * [0])
+    x, y = torch.eye(n_nodes,300), tensor(labels + (n_nodes - len(labels)) * [0])
 
     data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
 
@@ -203,7 +204,7 @@ class GAT(torch.nn.Module):
 
 
 #%%
-def train_strategy(train_encods, test_encods, together=True):
+def train_strategy(train_encods, test_encods, n_train=None,n_test = None,together=True):
     """
     If together is True, we will construct single graph for test and train and mask test during training
     """
@@ -214,8 +215,8 @@ def train_strategy(train_encods, test_encods, together=True):
         data = get_graph_data(
             train_encods,
             test_encods,
-            n_train=100,
-            n_test=40,
+            n_train=n_train,
+            n_test=n_test,
             window_size=20,
             stride=1,
         ).to(device)
@@ -229,16 +230,16 @@ def train_strategy(train_encods, test_encods, together=True):
             test_encods, n_test=40, window_size=10, stride=1
         ).to(device)
 
-    model = GCN(data=data_train, hidden_channels=200).double().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    model = GCN(data=data_train, hidden_channels=100).double().to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.005,weight_decay=5e-5)
     criterion = torch.nn.CrossEntropyLoss()
-    for epoch in range(1, 1000):
+    for epoch in range(0, 5000):
         loss = train_func(data_train, model, optimizer, criterion)
         if together == True:
             _, train_acc = test_model(data_train, model, type="train")
             _, test_acc = test_model(data_train, model, type="test")
-            print(f"Train Accuracy: {train_acc:.4f}, Test Accuracy: {test_acc:.4f}")
-            if epoch % 10 == 1:
+            if epoch % 10 == 0:
+                print(f"Train Accuracy: {train_acc:.4f}, Test Accuracy: {test_acc:.4f}")
                 print(f"Epoch: {epoch:03d}, Loss: {loss:.4f}")
 
         else:
@@ -246,7 +247,7 @@ def train_strategy(train_encods, test_encods, together=True):
             _, test_acc = test_model(data_test, model, type="test")
 
             print(f"Train Accuracy: {train_acc:.4f}, Test Accuracy: {test_acc:.4f}")
-            if epoch % 10 == 1:
+            if epoch % 10 == 0:
                 print(f"Epoch: {epoch:03d}, Loss: {loss:.4f}")
     return model
 
@@ -255,4 +256,6 @@ def train_strategy(train_encods, test_encods, together=True):
 train_encods = get_token_encodings("train")
 test_encods = get_token_encodings("test")
 
-model = train_strategy(train_encods, test_encods, together=False)
+model = train_strategy(train_encods, test_encods, n_train= 2000,n_test = None,together=True)
+
+# %%
