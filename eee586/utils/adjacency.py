@@ -8,6 +8,7 @@ from numba.typed import Dict as NumbaDict
 from itertools import chain, combinations
 from tqdm import tqdm, trange
 from pathlib import Path
+from scipy.sparse import coo_matrix
 
 from eee586 import PKL_DIR
 from eee586.word_embedding import get_token_encodings
@@ -30,6 +31,31 @@ def count_nonzero(vector: np.ndarray) -> int:
         if value != 0:
             count += 1
     return count
+
+
+@njit()
+def get_tfidf_coo_vectors(
+    document_count: int,
+    all_vocab: np.ndarray,
+    tf_dict: NumbaDict,
+    df_dict: NumbaDict,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+
+    data_size = len(tf_dict)
+    row = np.zeros((data_size,))
+    col = np.zeros((data_size,))
+    data = np.zeros((data_size,))
+
+    word_idx = {word: idx for idx, word in enumerate(all_vocab)}
+    for i, ((doc_id, word), tf) in enumerate(tf_dict.items()):
+        df = df_dict[word]
+        idf = _idf(df, document_count)
+        curr_word_idx = word_idx[word]
+
+        row[i] = doc_id
+        col[i] = curr_word_idx
+        data[i] = tf * idf
+    return row, col, data
 
 
 def get_tfidf_matrix(
@@ -70,14 +96,8 @@ def _get_tfidf_matrix(
                 df_dict[word] = df_dict.get(word, 0) + 1
 
     N = len(documents)
-    tfidf = np.zeros((N, len(all_vocab)))
-    word_idx = {word: idx for idx, word in enumerate(all_vocab)}
-    for (doc_id, word), tf in tf_dict.items():
-        df = df_dict[word]
-        idf = _idf(df, N)
-        curr_word_idx = word_idx[word]
-        tfidf[doc_id, curr_word_idx] = tf * idf
-    return tfidf
+    row, col, data = get_tfidf_coo_vectors(N, all_vocab, tf_dict, df_dict)
+    return coo_matrix((data, (row, col)), shape=(N, len(all_vocab))).toarray()
 
 
 def _convert_dict_to_numba_dict(d, key_type, value_type) -> NumbaDict:
