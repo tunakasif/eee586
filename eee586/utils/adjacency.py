@@ -23,23 +23,33 @@ def _idf(df: numba_int64, N: numba_int64) -> numba_float64:
     return np.log(N / (1 + df))
 
 
+@njit()
+def count_nonzero(vector: np.ndarray) -> int:
+    count = 0
+    for value in vector:
+        if value != 0:
+            count += 1
+    return count
+
+
 def get_tfidf_matrix(
     dataset_dir: Path,
     documents: List[List[int]],
     all_vocab: np.ndarray,
 ):
+    docs = [np.array(doc) for doc in documents]
     tfidf_matrix_path = Path(dataset_dir, "tfidf_matrix.pkl")
     tfidf_matrix = picklize(
         _get_tfidf_matrix,
         tfidf_matrix_path,
-        documents,
+        docs,
         all_vocab,
     )
     return tfidf_matrix
 
 
 def _get_tfidf_matrix(
-    documents: List[List[int]],
+    documents: List[np.ndarray],
     all_vocab: np.ndarray,
 ) -> np.ndarray:
     tf_dict = NumbaDict.empty(
@@ -54,7 +64,7 @@ def _get_tfidf_matrix(
 
     for word in tqdm(all_vocab, desc="TF-IDF", unit="word"):
         for doc_id, doc in enumerate(documents):
-            tf = np.count_nonzero(doc == word) / len(doc)
+            tf = count_nonzero(doc == word) / len(doc)
             if tf > 0:
                 tf_dict[(doc_id, word)] = tf
                 df_dict[word] = df_dict.get(word, 0) + 1
