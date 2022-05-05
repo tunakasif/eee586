@@ -6,7 +6,7 @@ from numba import int64 as numba_int64
 from numba.core import types as numba_types
 from numba.typed import Dict as NumbaDict
 from itertools import chain, combinations
-from tqdm import tqdm, trange
+from tqdm import tqdm
 from pathlib import Path
 import scipy.sparse as sps
 
@@ -97,7 +97,7 @@ def _get_tfidf_matrix(
 
     N = len(documents)
     row, col, data = get_tfidf_coo_vectors(N, all_vocab, tf_dict, df_dict)
-    return sps.coo_matrix((data, (row, col)), shape=(N, len(all_vocab))).toarray()
+    return sps.coo_matrix((data, (row, col)), shape=(N, len(all_vocab)))
 
 
 def _convert_dict_to_numba_dict(d, key_type, value_type) -> NumbaDict:
@@ -325,7 +325,7 @@ def _get_pmi_matrix(
     n_vocab = len(all_vocab)
     pmi_matrix_upper = sps.coo_matrix((data, (row, col)), shape=(n_vocab, n_vocab))
     pmi_matrix = pmi_matrix_upper + pmi_matrix_upper.T + sps.identity(n_vocab)
-    return pmi_matrix.toarray()
+    return pmi_matrix
 
 
 def generate_adj_matrix(
@@ -350,11 +350,11 @@ def generate_adj_matrix(
     tf_idf_matrix = get_tfidf_matrix(dataset_dir, documents, all_vocab)
     pmi_matrix = get_pmi_matrix(dataset_dir, documents, window_size, stride)
 
-    upper_left = np.eye(n_docs)
+    upper_left = sps.identity(n_docs)
     upper_right = tf_idf_matrix
     lower_left = tf_idf_matrix.T
     lower_right = pmi_matrix
-    adj_matrix = np.block(
+    adj_matrix = sps.bmat(
         [
             [upper_left, upper_right],
             [lower_left, lower_right],
@@ -386,10 +386,8 @@ def main(
         stride=stride,
     )
 
-    nz_count = np.count_nonzero(A)
+    print(type(A))
     print(f"Shape, Size: {A.shape}, {A.size}")
-    print(f"Non-zero count: {nz_count}/{A.size}")
-    print(f"Non-zero ratio: {(A != 0).sum() / A.size * 100:.2f}%")
 
 
 if __name__ == "__main__":
