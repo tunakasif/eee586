@@ -276,7 +276,7 @@ def get_pmi_matrix(
         all_vocab,
         words_occurrence,
         word_pairs_occurrence,
-        window_size,
+        window_size=window_size,
         enforce=enforce_recompute,
     )
 
@@ -375,8 +375,8 @@ def generate_adj_matrix(
         dataset_dir,
         documents,
         all_vocab,
-        window_size,
-        stride,
+        window_size=window_size,
+        stride=stride,
         enforce=enforce_recompute,
     )
     return adj_matrix
