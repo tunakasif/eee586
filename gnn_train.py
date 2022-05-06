@@ -58,7 +58,9 @@ def get_graph_data(
 
 
 #%%
-def train_strategy(train_encods, test_encods, n_train=None, n_test=None, together=True):
+def train_strategy(
+    train_encods, test_encods, hidden_channels, n_train=None, n_test=None, together=True
+):
     """
     If together is True, we will construct single graph for test and train and mask test during training
     """
@@ -83,15 +85,15 @@ def train_strategy(train_encods, test_encods, n_train=None, n_test=None, togethe
     #         test_encods, n_test=40, window_size=10, stride=1
     #     ).to(device)
 
-    model = GCN(data=data_train, hidden_channels=200).double().to(device)
+    model = GCN(layer_no=2, data=data_train).double().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=0)
     criterion = torch.nn.CrossEntropyLoss()
-    for epoch in range(0, 50):
+    for epoch in range(0, 200):
         loss = train_model(data_train, model, optimizer, criterion)
         if together == True:
             _, train_acc = test_model(data_train, model, type="train")
             _, test_acc = test_model(data_train, model, type="test")
-            if epoch % 10 == 0:
+            if epoch % 3 == 0:
                 print(f"Train Accuracy: {train_acc:.4f}, Test Accuracy: {test_acc:.4f}")
                 print(f"Epoch: {epoch:03d}, Loss: {loss:.4f}")
 
@@ -112,16 +114,21 @@ test_encods = get_token_encodings("test")
 model, all_vocab = train_strategy(
     train_encods,
     test_encods,
-    n_train=1000,
-    n_test=100,
+    hidden_channels=[2000, 200, 20],
+    n_train=500,
+    n_test=50,
     together=True,
 )
 
 # %%
-def get_gnn_embeddings(model: GCN):
+def get_gnn_embeddings(model: GCN, n_train):
     param_list = []
     for param in model.parameters():
         param_list.append(param)
-    W1 = param_list[0]
-    W2 = param_list[2]
-    return W1, W2
+    W1 = param_list[1]
+    W2 = param_list[3]
+    document_embeddings = W1[:, :n_train]
+    return document_embeddings
+
+
+# %%

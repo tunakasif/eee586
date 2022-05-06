@@ -5,13 +5,19 @@ from torch_geometric.data import Data
 
 
 class GCN(torch.nn.Module):
-    def __init__(self, hidden_channels, data: Data):
+    def __init__(self, layer_no, data: Data):
         super().__init__()
         self.data = data
         # self.edge_weight = torch.nn.Parameter(self.data.edge_attr)
         self.edge_weight = self.data.edge_attr
-        self.conv1 = GCNConv(data.num_node_features, hidden_channels, cached=True)
-        self.conv2 = GCNConv(hidden_channels, 20, cached=True)
+        self.layer_no = layer_no
+        if layer_no == 3:
+            self.conv1 = GCNConv(data.num_node_features, 2000, cached=True)
+            self.conv2 = GCNConv(2000, 200, cached=True)
+            self.conv3 = GCNConv(200, 20, cached=True)
+        else:
+            self.conv1 = GCNConv(data.num_node_features, 200, cached=True)
+            self.conv2 = GCNConv(200, 20, cached=True)
 
     def forward(self):
         x, edge_index = (self.data.x, self.data.edge_index)
@@ -20,6 +26,9 @@ class GCN(torch.nn.Module):
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.conv2(x, edge_index, self.edge_weight)
         x = F.dropout(x, p=0.5, training=self.training)
+        if self.layer_no == 3:
+            x = self.conv3(x, edge_index, self.edge_weight)
+            x = F.dropout(x, p=0.5, training=self.training)
         return x
 
 
