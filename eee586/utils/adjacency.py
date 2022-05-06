@@ -339,7 +339,14 @@ def generate_adj_matrix(
 
     n_docs = len(documents)
     n_vocab = len(all_vocab)
-    print(n_docs, n_vocab)
+    print(
+        "n_docs: "
+        + str(n_docs)
+        + " n_vocab: "
+        + str(n_vocab)
+        + " n nodes : "
+        + str(n_vocab + n_docs)
+    )
 
     dataset_dir = Path.joinpath(
         PKL_DIR,
