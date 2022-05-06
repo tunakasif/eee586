@@ -58,8 +58,12 @@ def get_graph_data(
     stride=1,
 ) -> Data:
 
-    train_docs, test_docs = train_encods.get("input_ids"), test_encods.get("input_ids")
-    train_labels, test_labels = train_encods.get("labels"), test_encods.get("labels")
+    train_docs, test_docs = np.array(train_encods.get("input_ids")), np.array(
+        test_encods.get("input_ids")
+    )
+    train_labels, test_labels = np.array(train_encods.get("labels")), np.array(
+        test_encods.get("labels")
+    )
 
     if n_test is None:
         n_test = len(test_docs)
@@ -69,8 +73,13 @@ def get_graph_data(
 
     train_indices = np.random.choice(len(train_docs), n_train, replace=False)
     test_indices = np.random.choice(len(test_docs), n_test, replace=False)
-    documents = train_docs[train_indices] + test_docs[test_indices]
-    labels = train_labels[train_indices] + test_labels[test_indices]
+    documents = list(
+        np.concatenate((train_docs[train_indices], test_docs[test_indices]), axis=0)
+    )
+    labels = list(
+        np.concatenate((train_labels[train_indices], test_labels[test_indices]), axis=0)
+    )
+
     doc_vocabs = [set(doc) for doc in documents]
     all_vocab = list(set.union(*doc_vocabs))
     n_nodes = len(all_vocab) + len(documents)
@@ -85,7 +94,7 @@ def get_graph_data(
     del c
     x = torch.eye(n_nodes)
     y = tensor(labels + (n_nodes - len(labels)) * [0])
-
+    print(x.shape, y.shape)
     data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
 
     data.train_idx = tensor(n_train * [True] + (n_nodes - n_train) * [False])
@@ -213,8 +222,7 @@ def train_strategy(train_encods, test_encods, n_train=None, n_test=None, togethe
     """
     If together is True, we will construct single graph for test and train and mask test during training
     """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    torch.cuda.empty_cache()
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     if together:
         data, train_indices, test_indices = get_graph_data(
@@ -224,8 +232,8 @@ def train_strategy(train_encods, test_encods, n_train=None, n_test=None, togethe
             n_test=n_test,
             window_size=20,
             stride=1,
-        ).to(device)
-        data_train = data
+        )
+        data_train = data.to(device)
 
     # else:
     #     data_train = get_graph_data_train(
@@ -260,12 +268,12 @@ def train_strategy(train_encods, test_encods, n_train=None, n_test=None, togethe
 # %%
 train_encods = get_token_encodings("train")
 test_encods = get_token_encodings("test")
-
+# %%
 model = train_strategy(
     train_encods,
     test_encods,
-    n_train=3500,
-    n_test=500,
+    n_train=100,
+    n_test=30,
     together=True,
 )
 
