@@ -6,8 +6,9 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GATConv
 from scipy.sparse import random
-from torch import tensor 
+from torch import tensor
 from torch_sparse import SparseTensor
+import numpy as np
 
 #%matplotlib inline
 # import matplotlib.pyplot as plt
@@ -62,15 +63,17 @@ def get_graph_data(
 
     if n_test is None:
         n_test = len(test_docs)
-    
-    if n_train is None:
-        n_train = len(train_docs),
 
-    documents = train_docs[:n_train] + test_docs[:n_test]
-    labels = train_labels[:n_train] + test_labels[:n_test]
+    if n_train is None:
+        n_train = (len(train_docs),)
+
+    train_indices = np.random.choice(len(train_docs), n_train, replace=False)
+    test_indices = np.random.choice(len(test_docs), n_test, replace=False)
+    documents = train_docs[train_indices] + test_docs[test_indices]
+    labels = train_labels[train_indices] + test_labels[test_indices]
     doc_vocabs = [set(doc) for doc in documents]
     all_vocab = list(set.union(*doc_vocabs))
-    n_nodes =len(all_vocab) + len(documents)
+    n_nodes = len(all_vocab) + len(documents)
 
     c = generate_adj_matrix(
         documents,
@@ -79,9 +82,9 @@ def get_graph_data(
         stride=stride,
     )
     edge_index, edge_attr = get_edge_values(c)
-    del(c)
-    x = torch.eye(n_nodes,1)
-    y =tensor(labels + (n_nodes - len(labels)) * [0])
+    del c
+    x = torch.eye(n_nodes)
+    y = tensor(labels + (n_nodes - len(labels)) * [0])
 
     data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
 
@@ -89,7 +92,7 @@ def get_graph_data(
     data.test_idx = tensor(
         n_train * [False] + n_test * [True] + (n_nodes - (n_train + n_test)) * [False]
     )
-    return data
+    return data, train_indices, test_indices
 
 
 # def get_graph_data_train(
@@ -177,9 +180,9 @@ class GCN(torch.nn.Module):
         x, edge_index = (self.data.x, self.data.edge_index)
         x = x.double()
         x = F.relu(self.conv1(x, edge_index, self.edge_weight))
-        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=0.6, training=self.training)
         x = self.conv2(x, edge_index, self.edge_weight)
-        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=0.6, training=self.training)
         return x
 
 
@@ -206,7 +209,7 @@ class GAT(torch.nn.Module):
 
 
 #%%
-def train_strategy(train_encods, test_encods, n_train=None,n_test = None,together=True):
+def train_strategy(train_encods, test_encods, n_train=None, n_test=None, together=True):
     """
     If together is True, we will construct single graph for test and train and mask test during training
     """
@@ -214,7 +217,7 @@ def train_strategy(train_encods, test_encods, n_train=None,n_test = None,togethe
     torch.cuda.empty_cache()
 
     if together:
-        data = get_graph_data(
+        data, train_indices, test_indices = get_graph_data(
             train_encods,
             test_encods,
             n_train=n_train,
@@ -233,9 +236,9 @@ def train_strategy(train_encods, test_encods, n_train=None,n_test = None,togethe
     #     ).to(device)
 
     model = GCN(data=data_train, hidden_channels=200).double().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01,weight_decay=0)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=0)
     criterion = torch.nn.CrossEntropyLoss()
-    for epoch in range(0, 5000):
+    for epoch in range(0, 50):
         loss = train_func(data_train, model, optimizer, criterion)
         if together == True:
             _, train_acc = test_model(data_train, model, type="train")
@@ -258,6 +261,12 @@ def train_strategy(train_encods, test_encods, n_train=None,n_test = None,togethe
 train_encods = get_token_encodings("train")
 test_encods = get_token_encodings("test")
 
-model = train_strategy(train_encods, test_encods, n_train= 5000,n_test = 2000,together=True)
+model = train_strategy(
+    train_encods,
+    test_encods,
+    n_train=3500,
+    n_test=500,
+    together=True,
+)
 
 # %%
