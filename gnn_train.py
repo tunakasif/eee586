@@ -33,7 +33,6 @@ def get_graph_data(
 
     documents = train_docs[:n_train] + test_docs[:n_test]
     labels = train_labels[:n_train] + test_labels[:n_test]
-
     doc_vocabs = [set(doc) for doc in documents]
     all_vocab = list(set.union(*doc_vocabs))
     n_nodes = len(all_vocab) + len(documents)
@@ -51,8 +50,8 @@ def get_graph_data(
 
     data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
 
-    data.train_mask = tensor(n_train * [True] + (n_nodes - n_train) * [False])
-    data.test_mask = tensor(
+    data.train_idx = tensor(n_train * [True] + (n_nodes - n_train) * [False])
+    data.test_idx = tensor(
         n_train * [False] + n_test * [True] + (n_nodes - (n_train + n_test)) * [False]
     )
     return data, all_vocab
@@ -113,13 +112,13 @@ test_encods = get_token_encodings("test")
 model, all_vocab = train_strategy(
     train_encods,
     test_encods,
-    n_train=100,
-    n_test=20,
+    n_train=1000,
+    n_test=100,
     together=True,
 )
 
 # %%
-def get_gnn_embeddings(model: GCN, train_indices):
+def get_gnn_embeddings(model: GCN):
     param_list = []
     for param in model.parameters():
         param_list.append(param)
