@@ -62,6 +62,7 @@ def get_tfidf_matrix(
     dataset_dir: Path,
     documents: List[List[int]],
     all_vocab: np.ndarray,
+    enforce_recompute: bool = False,
 ):
     docs = [np.array(doc) for doc in documents]
     tfidf_matrix_path = Path(dataset_dir, "tfidf_matrix.pkl")
@@ -70,6 +71,7 @@ def get_tfidf_matrix(
         tfidf_matrix_path,
         docs,
         all_vocab,
+        enforce=enforce_recompute,
     )
     return tfidf_matrix
 
@@ -141,6 +143,7 @@ def _get_windows(
 def get_words_occurrence(
     dataset_dir: Path,
     documents: List[List[int]],
+    enforce_recompute: bool = False,
     window_size: int = 20,
     stride: int = 1,
 ) -> Dict[int, int]:
@@ -151,6 +154,7 @@ def get_words_occurrence(
         documents,
         window_size=window_size,
         stride=stride,
+        enforce=enforce_recompute,
     )
 
     word_occurrence_path = Path(dataset_dir, "words_occurrence.pkl")
@@ -158,6 +162,7 @@ def get_words_occurrence(
         _get_words_occurrence,
         word_occurrence_path,
         windows,
+        enforce=enforce_recompute,
     )
 
     return words_occurrence
@@ -175,6 +180,7 @@ def _get_words_occurrence(windows) -> Dict[int, int]:
 def get_word_pairs_occurrence(
     dataset_dir: Path,
     documents: List[List[int]],
+    enforce_recompute: bool = False,
     window_size: int = 3,
     stride: int = 1,
 ) -> Dict[Tuple[int, int], int]:
@@ -185,6 +191,7 @@ def get_word_pairs_occurrence(
         documents,
         window_size=window_size,
         stride=stride,
+        enforce=enforce_recompute,
     )
 
     word_pairs_occurrence_path = Path(dataset_dir, "word_pairs_occurrence.pkl")
@@ -192,6 +199,7 @@ def get_word_pairs_occurrence(
         _get_word_pairs_occurrence,
         word_pairs_occurrence_path,
         windows,
+        enforce=enforce_recompute,
     )
 
     return word_pairs_occurrence
@@ -220,6 +228,7 @@ def pmi(n_i: int, n_j: int, n_ij: int, n_win: int, relu: bool = True) -> float:
 def get_pmi_matrix(
     dataset_dir: Path,
     documents: List[List[int]],
+    enforce_recompute: bool = False,
     window_size: int = 20,
     stride: int = 1,
 ) -> np.ndarray:
@@ -230,6 +239,7 @@ def get_pmi_matrix(
         documents,
         window_size=window_size,
         stride=stride,
+        enforce=enforce_recompute,
     )
 
     words_occurrence_path = Path(dataset_dir, "words_occurrence.pkl")
@@ -237,12 +247,14 @@ def get_pmi_matrix(
         _get_words_occurrence,
         words_occurrence_path,
         windows,
+        enforce=enforce_recompute,
     )
     word_pairs_occurrence_path = Path(dataset_dir, "word_pairs_occurrence.pkl")
     word_pairs_occurrence = picklize(
         _get_word_pairs_occurrence,
         word_pairs_occurrence_path,
         windows,
+        enforce=enforce_recompute,
     )
     print("Converting Numba Dict")
     words_occurrence = _convert_dict_to_numba_dict(
@@ -265,6 +277,7 @@ def get_pmi_matrix(
         words_occurrence,
         word_pairs_occurrence,
         window_size,
+        enforce=enforce_recompute,
     )
 
     return pmi_matrix
@@ -330,6 +343,7 @@ def _get_pmi_matrix(
 
 def generate_adj_matrix(
     documents: List[List[int]],
+    enforce_recompute: bool = False,
     dataset_name: str = "SetFit/20_newsgroups",
     window_size: int = 20,
     stride: int = 1,
@@ -363,6 +377,7 @@ def generate_adj_matrix(
         all_vocab,
         window_size,
         stride,
+        enforce=enforce_recompute,
     )
     return adj_matrix
 
@@ -371,11 +386,23 @@ def _generate_adj_matrix(
     dataset_dir: Path,
     documents: List[List[int]],
     all_vocab: np.ndarray,
+    enforce_recompute: bool = False,
     window_size: int = 20,
     stride: int = 1,
 ) -> np.ndarray:
-    tf_idf_matrix = get_tfidf_matrix(dataset_dir, documents, all_vocab)
-    pmi_matrix = get_pmi_matrix(dataset_dir, documents, window_size, stride)
+    tf_idf_matrix = get_tfidf_matrix(
+        dataset_dir,
+        documents,
+        all_vocab,
+        enforce_recompute,
+    )
+    pmi_matrix = get_pmi_matrix(
+        dataset_dir,
+        documents,
+        enforce_recompute,
+        window_size,
+        stride,
+    )
 
     upper_left = sps.identity(len(documents))
     upper_right = tf_idf_matrix
