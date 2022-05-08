@@ -33,7 +33,7 @@ def test_model_mlp(model, data, train_labels=None, test_labels=None, type=None):
     else:
         correct = pred == train_labels
         acc = int(correct.sum()) / len(train_labels)
-    return acc * 100
+    return pred, acc * 100
 
 
 def test_model(data, model, type):

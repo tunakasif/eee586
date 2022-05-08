@@ -131,39 +131,56 @@ model, all_vocab = train_strategy(
     n_test=n_test,
     together=True,
 )
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-bert_embed_full_train, bert_embed_full_test = get_doc_embeddings(
-    "train"
-), get_doc_embeddings("test")
-bert_embed_train = tensor(bert_embed_full_train[:n_train]).to(device)
-bert_embed_test = tensor(bert_embed_full_test[:n_test]).to(device)
-gnn_embed_train, gnn_embed_test = get_gnn_embeddings(model, n_train, n_test)
+# %%
+# Run this cell for BERT + GNN embeddings
+# continue_with_MLP = False
+# if continue_with_MLP:
+#     flag = "BERT+GNN embedding"
+#     if flag == "BERT+GNN":  # train bert + gnn embeddings with nlp
+#         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+#         bert_embed_full_train, bert_embed_full_test = get_doc_embeddings(
+#             "train"
+#         ), get_doc_embeddings("test")
+#         bert_embed_train = tensor(bert_embed_full_train[:n_train]).to(device)
+#         bert_embed_test = tensor(bert_embed_full_test[:n_test]).to(device)
+#         gnn_embed_train, gnn_embed_test = get_gnn_embeddings(model, n_train, n_test)
 
-embed_out_train = torch.concat((bert_embed_train, gnn_embed_train), dim=1)
-embed_out_test = torch.concat((bert_embed_test, gnn_embed_test), dim=1)
-train_labels = tensor(train_encods.get("labels")[:n_train]).to(device)
-test_labels = tensor(test_encods.get("labels")[:n_test]).to(device)
+#         embed_out_train = torch.concat((bert_embed_train, gnn_embed_train), dim=1)
+#         embed_out_test = torch.concat((bert_embed_test, gnn_embed_test), dim=1)
+#         train_labels = tensor(train_encods.get("labels")[:n_train]).to(device)
+#         test_labels = tensor(test_encods.get("labels")[:n_test]).to(device)
+#     elif flag == "BERT":  # train only bert embeddings with MLP
+#         train_encods = get_token_encodings("train")
+#         test_encods = get_token_encodings("test")
+#         n_train = 10000
+#         n_test = 7000
+#         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+#         bert_embed_full_train, bert_embed_full_test = get_doc_embeddings(
+#             "train"
+#         ), get_doc_embeddings("test")
+#         embed_out_train = tensor(bert_embed_full_train[:n_train]).to(device)
+#         embed_out_test = tensor(bert_embed_full_test[:n_test]).to(device)
+#         train_labels = tensor(train_encods.get("labels")[:n_train]).to(device)
+#         test_labels = tensor(test_encods.get("labels")[:n_test]).to(device)
 
-#%%
-# Now pass this output to MLP and train
-model_mlp = MLP(input_dim=embed_out_train.shape[1])
-optimizer = torch.optim.Adam(model_mlp.parameters(), lr=0.01, weight_decay=0)
-criterion = torch.nn.CrossEntropyLoss()
-model_mlp = model_mlp.to(device)
-criterion = criterion.to(device)
-
-for epoch in range(0, 1000):
-    loss = train_model_mlp(
-        model_mlp, embed_out_train, optimizer, criterion, train_labels
-    )
-    train_acc = test_model_mlp(
-        model_mlp, embed_out_train, train_labels=train_labels, type="train"
-    )
-    test_acc = test_model_mlp(
-        model_mlp, embed_out_test, test_labels=test_labels, type="test"
-    )
-    if epoch % 100 == 0:
-        print(f"Train Accuracy: {train_acc:.4f}, Test Accuracy: {test_acc:.4f}")
-        print(f"Epoch: {epoch:03d}, Loss: {loss:.4f}")
-
+#     model_mlp = MLP(input_dim=embed_out_train.shape[1])
+#     optimizer = torch.optim.Adam(model_mlp.parameters(), lr=0.005, weight_decay=5e-4)
+#     criterion = torch.nn.CrossEntropyLoss()
+#     model_mlp = model_mlp.to(device)
+#     criterion = criterion.to(device)
+#     for epoch in range(0, 10000):
+#         loss = train_model_mlp(
+#             model_mlp, embed_out_train, optimizer, criterion, train_labels
+#         )
+#         pred_train, train_acc = test_model_mlp(
+#             model_mlp, embed_out_train, train_labels=train_labels, type="train"
+#         )
+#         pred_test, test_acc = test_model_mlp(
+#             model_mlp, embed_out_test, test_labels=test_labels, type="test"
+#         )
+#         if epoch % 1000 == 0:
+#             print(f"Train Accuracy: {train_acc:.4f}, Test Accuracy: {test_acc:.4f}")
+#             print(f"Epoch: {epoch:03d}, Loss: {loss:.4f}")
+#     else:
+#         pass
 # %%
