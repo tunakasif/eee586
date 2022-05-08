@@ -32,6 +32,22 @@ class GCN(torch.nn.Module):
         return x
 
 
+# model definition
+class MLP(torch.nn.Module):
+    # define model elements
+    def __init__(self, input_dim):
+        super(MLP, self).__init__()
+        self.linear1 = torch.nn.Linear(input_dim, 100)
+        self.linear2 = torch.nn.Linear(100, 20)
+
+    # forward propagate input
+    def forward(self, x):
+        x = x.float()
+        x = F.relu(self.linear1(x))
+        x = F.relu(self.linear2(x))
+        return x
+
+
 # def get_graph_data_train(
 #     train_encods: dict,
 #     n_train: int = None,

@@ -1,5 +1,6 @@
 import torch
 from torch import tensor
+from gnn_models import GCN
 
 
 def train_model(data, model, optimizer, criterion):
@@ -10,6 +11,29 @@ def train_model(data, model, optimizer, criterion):
     loss.backward()
     optimizer.step()
     return loss
+
+
+def train_model_mlp(model, data, optimizer, criterion, labels):
+    model.train()
+    optimizer.zero_grad()
+    out = model.forward(data)
+    loss = criterion(out, labels)
+    loss.backward()
+    optimizer.step()
+    return loss
+
+
+def test_model_mlp(model, data, train_labels=None, test_labels=None, type=None):
+    model.eval()
+    out = model.forward(data)
+    pred = out.argmax(dim=1)
+    if type == "test":
+        correct = pred == test_labels
+        acc = int(correct.sum()) / len(test_labels)
+    else:
+        correct = pred == train_labels
+        acc = int(correct.sum()) / len(train_labels)
+    return acc * 100
 
 
 def test_model(data, model, type):
@@ -31,3 +55,13 @@ def get_edge_values(c):
     edge_index = torch.concat((row, col), dim=1).T.long().contiguous()
     edge_attr = tensor(data).reshape(-1)
     return edge_index, edge_attr
+
+
+def get_gnn_embeddings(model: GCN, n_train, n_test):
+    param_list = []
+    for param in model.parameters():
+        param_list.append(param)
+    W1 = param_list[1]
+    gnn_embed_train = W1[:, :n_train]
+    gnn_embed_test = W1[:, n_train : (n_train + n_test)]
+    return gnn_embed_train.T, gnn_embed_test.T

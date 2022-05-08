@@ -6,10 +6,20 @@ import numpy as np
 
 #%matplotlib inline
 # import matplotlib.pyplot as plt
-from eee586.word_embedding import get_token_encodings
+from eee586.word_embedding import (
+    get_token_encodings,
+    get_doc_embeddings,
+)
 from eee586.utils.adjacency import generate_adj_matrix
-from gnn_models import GCN
-from gnn_train_utils import train_model, test_model, get_edge_values
+from gnn_models import GCN, MLP
+from gnn_train_utils import (
+    train_model,
+    test_model,
+    get_edge_values,
+    train_model_mlp,
+    test_model_mlp,
+    get_gnn_embeddings,
+)
 
 # %%
 def get_graph_data(
@@ -87,13 +97,13 @@ def train_strategy(
 
     model = GCN(layer_no=2, data=data_train).double().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=0)
-    criterion = torch.nn.CrossEntropyLoss()
-    for epoch in range(0, 200):
+    criterion = torch.nn.CrossEntropyLoss().to(device)
+    for epoch in range(0, 10):
         loss = train_model(data_train, model, optimizer, criterion)
         if together == True:
             _, train_acc = test_model(data_train, model, type="train")
             _, test_acc = test_model(data_train, model, type="test")
-            if epoch % 3 == 0:
+            if epoch % 5 == 0:
                 print(f"Train Accuracy: {train_acc:.4f}, Test Accuracy: {test_acc:.4f}")
                 print(f"Epoch: {epoch:03d}, Loss: {loss:.4f}")
 
@@ -110,25 +120,50 @@ def train_strategy(
 # %%
 train_encods = get_token_encodings("train")
 test_encods = get_token_encodings("test")
-# %%
+
+n_train = 500
+n_test = 50
 model, all_vocab = train_strategy(
     train_encods,
     test_encods,
     hidden_channels=[2000, 200, 20],
-    n_train=500,
-    n_test=50,
+    n_train=n_train,
+    n_test=n_test,
     together=True,
 )
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+bert_embed_full_train, bert_embed_full_test = get_doc_embeddings(
+    "train"
+), get_doc_embeddings("test")
+bert_embed_train = tensor(bert_embed_full_train[:n_train]).to(device)
+bert_embed_test = tensor(bert_embed_full_test[:n_test]).to(device)
+gnn_embed_train, gnn_embed_test = get_gnn_embeddings(model, n_train, n_test)
 
-# %%
-def get_gnn_embeddings(model: GCN, n_train):
-    param_list = []
-    for param in model.parameters():
-        param_list.append(param)
-    W1 = param_list[1]
-    W2 = param_list[3]
-    document_embeddings = W1[:, :n_train]
-    return document_embeddings
+embed_out_train = torch.concat((bert_embed_train, gnn_embed_train), dim=1)
+embed_out_test = torch.concat((bert_embed_test, gnn_embed_test), dim=1)
+train_labels = tensor(train_encods.get("labels")[:n_train]).to(device)
+test_labels = tensor(test_encods.get("labels")[:n_test]).to(device)
 
+#%%
+# Now pass this output to MLP and train
+model_mlp = MLP(input_dim=embed_out_train.shape[1])
+optimizer = torch.optim.Adam(model_mlp.parameters(), lr=0.01, weight_decay=0)
+criterion = torch.nn.CrossEntropyLoss()
+model_mlp = model_mlp.to(device)
+criterion = criterion.to(device)
+
+for epoch in range(0, 1000):
+    loss = train_model_mlp(
+        model_mlp, embed_out_train, optimizer, criterion, train_labels
+    )
+    train_acc = test_model_mlp(
+        model_mlp, embed_out_train, train_labels=train_labels, type="train"
+    )
+    test_acc = test_model_mlp(
+        model_mlp, embed_out_test, test_labels=test_labels, type="test"
+    )
+    if epoch % 100 == 0:
+        print(f"Train Accuracy: {train_acc:.4f}, Test Accuracy: {test_acc:.4f}")
+        print(f"Epoch: {epoch:03d}, Loss: {loss:.4f}")
 
 # %%
