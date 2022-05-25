@@ -1,0 +1,67 @@
+\documentclass[a4paper, 12pt, conference]{IEEEtran}
+\usepackage[utf8]{inputenc}
+\usepackage[style=ieee]{biblatex}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{hyperref}
+\usepackage[capitalise,nameinlink]{cleveref}
+\usepackage{lipsum}
+\usepackage[pdftex]{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage[dvipsnames]{xcolor}
+
+\title{EEE 586: Final Report for the Term Project\\Text Classification with Distil-BERT Enhanced GNNs}
+
+\author{
+    \IEEEauthorblockN{Tuna Alikaşifoğlu\IEEEauthorrefmark{1}, Arda Can Aras\IEEEauthorrefmark{2}}
+    \IEEEauthorblockA{\IEEEauthorrefmark{1}\IEEEauthorrefmark{2}\textit{Dept.\ of Electrical and Electronics Engineering}}
+    \IEEEauthorblockA{\IEEEauthorrefmark{1}\IEEEauthorrefmark{2}\textit{Bilkent University}
+    \\ \{\href{mailto:t.alikasifoglu@bilkent.edu.tr}{\IEEEauthorrefmark{1}\texttt{t.alikasifoglu}}, \href{mailto:can.aras@bilkent.edu.tr}{\IEEEauthorrefmark{2}\texttt{can.aras}}\}\texttt{@bilkent.edu.tr}}
+}
+
+\date{\today}
+\bibliography{bibliography}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=[rgb]{0.6,0,0},
+    citecolor=[rgb]{0,0.6,0},
+    urlcolor=[rgb]{0,0,0.6},
+    % allcolors=black
+    pdftitle={EEE 586: Final Report - Group 16},
+    % bookmarksopen=true,
+}
+\graphicspath{{./img/}}
+\allowdisplaybreaks{}
+
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+\newcommand{\scalemath}[2]{\scalebox{#1}{\mbox{\ensuremath{\displaystyle #2}}}}
+\newcommand{\resultcolor}{RoyalPurple}
+
+\newcommand{\vect}[1]{\ensuremath{\boldsymbol{#1}}}
+\newcommand{\mat}[1]{\ensuremath{\boldsymbol{#1}}}
+\newcommand{\BERTEM}{\ensuremath{\vect{v}_{\text{BERT}}}}
+\newcommand{\BERTEMT}{\ensuremath{\vect{\widetilde{v}}_{\text{BERT}}}}
+\newcommand{\GNNEM}{\ensuremath{\vect{v}_{\text{GNN}}}}
+\newcommand{\DOCEM}{\ensuremath{\vect{\widetilde{v}_{doc}}}}
+
+
+\begin{document}
+\maketitle
+\thispagestyle{plain}
+\pagestyle{plain}
+
+\input{abstract.tex}
+\input{intro.tex}
+\input{related.tex}
+\input{methods.tex}
+\input{results.tex}
+\input{discussion.tex}
+
+\renewcommand*{\bibfont}{\small}
+\printbibliography{}
+\input{appendix.tex}
+
+\end{document}
