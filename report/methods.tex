@@ -1,6 +1,6 @@
 \section{Methods}\label{sec:methods}
 \subsection{General Structure}
-We propose a model to obtain structural and semantic embeddings for each of the documents and then use this information to make classification. Graph Neural Network is used to obtain structural embedding and Distil-BERT is used for retrieving semantic embeddings from text. Then these two embeddings combined with 3 different approaches that mentioned in \cref{aggregation}. Finally, the obtained document embedding passed to classification layer to get predictions for each document. The~\cref{fig:architecture} is the summary of general architecture. 
+We propose a model to obtain structural and semantic embeddings for each of the documents and then use this information to make classification. Graph Neural Network is used to obtain structural embedding and Distil-BERT is used for retrieving semantic embeddings from text. Then these two embeddings combined with 3 different approaches that mentioned in \cref{aggregation}. Finally, the obtained document embedding passed to classification layer to get predictions for each document. The~\cref{fig:architecture} is the summary of general architecture.
 \begin{figure*}[ht]
     \centering{}
     \includegraphics[width=\textwidth]{architecture.png}
@@ -11,63 +11,62 @@ We propose a model to obtain structural and semantic embeddings for each of the 
 The dataset of this term project is \emph{20 News Group} (20NG)~\autocite{20newsgroup} from \href{https://huggingface.co/datasets/SetFit/20_newsgroups}{huggingface.co}. Dataset contains 18,846 documents evenly categorized into 20 different categories. In total, 11,314 documents are in the training set and 7,532 documents are in the test set.
 
 \subsection{Graph Generation from Data}
-To represent documents and words in a graph structure, we identify the vocabulary for the whole dataset without explicitly dividing it into test and training. For GCN structure, PyG asks user to pass whole dataset at once and then later identify the train and test indices. Therefore, we treat whole dataset as single corpus and obtained vocabulary out of it. Later, we put each document and words in the nodes and represent their connections with adjacency matrix \mat{A}. Also each node can have an embedding in arbitrary dimension. To not effect learning of the structural features, we did not initialize these node embeddings by using popular algorithms like \cite{pennington-etal-2014-glove}, \cite{word2vec}, since they enforce node to start with a semantic information. Therefore, we used one-hot vector representation for both document and word embeddings. It yields the matrix $\mat{X} \in \mathbb{R}^{(n \times n)}$, where $n = n_{doc} + |V|$. We define the entries of the adjacency matrix as follows:
-    
-    \begin{equation}
-    A_{i j}= \begin{cases}\operatorname{PMI}(i, j) & i, j \text { are words, } \operatorname{PMI}(i, j)>0 \\ \operatorname{TF-IDF}_{i j} & i \text { is document, } j \text { is word } \\ 1 & i=j \\ 0 & \text {otherwise }\end{cases}    
-    \end{equation}
+To represent documents and words in a graph structure, we identify the vocabulary for the whole dataset without explicitly dividing it into test and training. For GCN structure, PyG asks user to pass whole dataset at once and then later identify the train and test indices. Therefore, we treat whole dataset as single corpus and obtained vocabulary out of it. Later, we put each document and words in the nodes and represent their connections with adjacency matrix \mat{A}. Also each node can have an embedding in arbitrary dimension. To not effect learning of the structural features, we did not initialize these node embeddings by using popular algorithms like~\autocite{pennington-etal-2014-glove},~\autocite{word2vec}, since they enforce node to start with a semantic information. Therefore, we used one-hot vector representation for both document and word embeddings. It yields the matrix \(\mat{X} \in \mathbb{R}^{(n \times n)}\), where \(n = n_{doc} + |V|\). We define the entries of the adjacency matrix as follows:
+\begin{equation}
+    A_{i j}= \begin{cases}\operatorname{PMI}(i, j) & i, j \text { are words, } \operatorname{PMI}(i, j)>0 \\ \operatorname{TF-IDF}_{i j} & i \text { is document, } j \text { is word } \\ 1 & i=j \\ 0 & \text {otherwise }\end{cases}
+\end{equation}
 
 \subsection{Learnable Adjacency Matrix}
-We also propose learnable adjacency matrix to have further find interesting structures in data. We define new adjacency matrix and tune the learnable part of it by $\alpha$. It can be given as follows:
-    \begin{equation}
-        \mat{\widetilde{A}} = \alpha\mat{\widehat{A}} + (1-\alpha)\mat{A}
-    \end{equation}
-    where we took gradient of loss function only with respect to \mat{\widehat{A}} and $\alpha \in (0,1)$.
-    
+We also propose learnable adjacency matrix to have further find interesting structures in data. We define new adjacency matrix and tune the learnable part of it by \(\alpha \). It can be given as follows:
+\begin{equation}
+    \mat{\widetilde{A}} = \alpha\mat{\widehat{A}} + (1-\alpha)\mat{A}
+\end{equation}
+where we took gradient of loss function only with respect to \mat{\widehat{A}} and \(\alpha \in (0,1)\).
+
 \subsection{GNN Embeddings}
-To implement Graph Neural Network, \href{https://pytorch-geometric.readthedocs.io/en/latest/}{PyTorch Geometric} library have been utilized. The aforementioned learnable adjacency matrix $\mat{\widetilde{A}}$ have been utilized instead of default \mat{A}. Generic equations of the GNN structure in our model can be given as follows:
-    \begin{equation}
-        \mat{L}^{(j+1)} = \rho (\mat{\widetilde{A}}\mat{L}^{(j)}\mat{W}_j),
-        \label{eq2}
-    \end{equation}
+To implement Graph Neural Network, \href{https://pytorch-geometric.readthedocs.io/en/latest/}{PyTorch Geometric} library have been utilized. The aforementioned learnable adjacency matrix \(\mat{\widetilde{A}}\) have been utilized instead of default \mat{A}. Generic equations of the GNN structure in our model can be given as follows:
+\begin{equation}
+    \mat{L}^{(j+1)} = \rho (\mat{\widetilde{A}}\mat{L}^{(j)}\mat{W}_j),
+    \label{eq2}
+\end{equation}
 Our model has 2 layers:
-    \begin{equation}
-        \mat{Z} = \operatorname{softmax}\left(\mat{\widetilde{A}}\,\operatorname{ReLU}(\mat{\widetilde{A}}\mat{X}\mat{W}_0)\,\mat{W}_1\right)
-    \end{equation}
-    and the cross-entropy error over all labeled documents:
-    \begin{equation}
-        \mathcal{L} = -\sum_{d \in \mathcal{Y}_D}^{} \sum_{f= 1}^{F} Y_{df}ln Z_{df}
-    \end{equation}
-Where {\small{}$\mathcal{Y}_D$} is the set of documents indices that have labels and F is the dimension of the output features.
+\begin{equation}
+    \mat{Z} = \operatorname{softmax}\left(\mat{\widetilde{A}}\,\operatorname{ReLU}(\mat{\widetilde{A}}\mat{X}\mat{W}_0)\,\mat{W}_1\right)
+\end{equation}
+and the cross-entropy error over all labeled documents:
+\begin{equation}
+    \mathcal{L} = -\sum_{d \in \mathcal{Y}_D}^{} \sum_{f= 1}^{F} Y_{df}\ln Z_{df}
+\end{equation}
+Where {\small{}\(\mathcal{Y}_D\)} is the set of documents indices that have labels and F is the dimension of the output features.
 Finally, we can obtain embeddings from the layer equations as follows:
 \begin{align}
-    \mat{E}_1 & = \mat{\widetilde{A}}\mat{X}\mat{W}_0 \\
+    \mat{E}_1 & = \mat{\widetilde{A}}\mat{X}\mat{W}_0                                                      \\
     \mat{E}_2 & = \mat{\widetilde{A}}\,\operatorname{ReLU}(\mat{\widetilde{A}}\mat{X}\mat{W}_0)\,\mat{W}_1
 \end{align}
-Where $\mat{W}_0 \in \mathbb{R}^{(n \times 200)}$ and $\mat{E}_1 \in \mathbb{R}^{(n\times200)}$ which gives 200 dimensional representation for both documents and words. We used those 200 dimensional embedding vector and represented as \GNNEM. 
+Where \(\mat{W}_0 \in \mathbb{R}^{(n \times 200)}\) and \(\mat{E}_1 \in \mathbb{R}^{(n\times200)}\) which gives 200 dimensional representation for both documents and words. We used those 200 dimensional embedding vector and represented as \GNNEM{}.
 
 \subsection{Distil-BERT Embeddings}
-To obtain embeddings from Distil-BERT, we fine-tuned the pre-trained model on 20NG dataset. Default parameters have 13 stacked attention layers so it has a output of dimension $(13,768)$ for each document. There is no pre-defined way to obtain a single 768 dimensional vector from that stacked representation. We choose the 13rd head of the attention layer as document representation. It is also possible to choose different head of the attention or one can also take element wise max of each layer etc. The obtained 768 dimensional document embeddings will be represented as \BERTEM. 
+To obtain embeddings from Distil-BERT, we fine-tuned the pre-trained model on 20NG dataset. Default parameters have 13 stacked attention layers so it has a output of dimension \((13,768)\) for each document. There is no pre-defined way to obtain a single 768 dimensional vector from that stacked representation. We choose the 13rd head of the attention layer as document representation. It is also possible to choose different head of the attention or one can also take element wise max of each layer etc. The obtained 768 dimensional document embeddings will be represented as \BERTEM{}.
 
 \subsection{Aggregation of Embeddings}\label{aggregation}
-There are several possible ways to aggregate the embeddings retrieved from GNN and Distil-BERT. We will show the structure of each of them. Each of the document embedding vector will be represented as \DOCEM{}. The dimension of the \DOCEM{} will be generically represented as $d_{doc}$
+There are several possible ways to aggregate the embeddings retrieved from GNN and Distil-BERT\@. We will show the structure of each of them. Each of the document embedding vector will be represented as \DOCEM{}. The dimension of the \DOCEM{} will be generically represented as \(d_{doc}\)
 \subsubsection{Concatenation}\label{agg:concat}
 We simply concatenate \BERTEM{} at the end of \GNNEM{} to obtain 968 dimensional document representation.
 \begin{equation}
-    \DOCEM = [\GNNEM || \BERTEM], \DOCEM \in \mathbb{R}^{(968x1)}
+    \DOCEM = [\GNNEM || \BERTEM], \DOCEM \in \mathbb{R}^{(968\times 1)}
 \end{equation}
 \subsubsection{Element-wise Sum}\label{agg:sum}
 To sum the embeddings, they must have same dimension. Therefore, we apply PCA to \BERTEM{} to reduce its dimension to 200. Then we simply sum them and obtain \DOCEM{} as follows:
 \begin{align}
-    \BERTEMT & = \operatorname{PCA}_{200}\{\BERTEM\} \\
-    \DOCEM & = \GNNEM + \BERTEMT,\quad \DOCEM \in \mathbb{R}^{(400x1)}
+    \BERTEMT & = \operatorname{PCA}_{200}\{\BERTEM{}\}                         \\
+    \DOCEM   & = \GNNEM + \BERTEMT,\quad \DOCEM \in \mathbb{R}^{(400\times 1)}
 \end{align}
 
 \subsubsection{Trade-Off}\label{agg:trade-off}
-The trade-off version of the embedding approach is aimed to control the contribution of GNN and BERT embedding with trainable parameter $\lambda$. It can be done for both summation and concatenation strategies \DOCEM{} is given as follows:
+The trade-off version of the embedding approach is aimed to control the contribution of GNN and BERT embedding with trainable parameter \(\lambda \). It can be done for both summation and concatenation strategies \DOCEM{} is given as follows:
 \begin{align}
-    \DOCEM & = [\lambda\GNNEM{}\, ||\, (1-\lambda)\BERTEM{}] \in \mathbb{R}^{(968x1)} \\
-    \DOCEM & = \lambda\GNNEM{} + (1-\lambda)\BERTEMT{} \in \mathbb{R}^{(400x1)} 
+    \DOCEM & = [\lambda\GNNEM{}\, ||\, (1-\lambda)\BERTEM{}] \in \mathbb{R}^{(968\times 1)} \\
+    \DOCEM & = \lambda\GNNEM{} + (1-\lambda)\BERTEMT{} \in \mathbb{R}^{(400\times 1)}
 \end{align}
 
 \subsection{Classification Layer for Document Embeddings}

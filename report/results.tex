@@ -1,75 +1,75 @@
 \section{Results}\label{sec:results}
 The result section will have 4 different parts. In the first part we will investigate the performance of GNN structure by its own. The second part will include the performance of Distil-BERT only. Individual results explanations will help us to compare their performance when they are combined with aggregation layer. At the third part we will consider the classification results of obtained \DOCEM{} from the \cref{aggregation} section. We will investigate the each aggregation setting mentioned in \cref{aggregation}. As a last part, we will investigate the performance of our model when it is compared with the different SOTA algorithms on the 20NG dataset.
 \subsection{GNN Results}
-In this part, we only train the GNN part of the algorithm and get the prediction results as a by product of embedding extraction procedure. We will use the best results from~\cref{tab:results:gnn} to compare with SOTA results. For the GNN results with learnable adjacency matrix, we only use the best $\alpha=0.13$ result for convenience. For convenience, we used some naming in our models. These are as follows: $\text{GCN}_{i,j,k} \triangleq$ GCN with $i,j,k$ hidden layers and $\text{L-GCN}_{i,j,k} \triangleq$ GCN with $i,j,k$ hidden layers using learnable adjacency matrix structure.
-\begin{table}[h]
+In this part, we only train the GNN part of the algorithm and get the prediction results as a by product of embedding extraction procedure. We will use the best results from~\cref{tab:results:gnn} to compare with SOTA results. For the GNN results with learnable adjacency matrix, we only use the best \(\alpha=0.13\) result for convenience. For convenience, we used some naming in our models. These are as follows: \(\text{GCN}_{i,j,k} \triangleq \) GCN with \(i,j,k\) hidden layers and \(\text{L-GCN}_{i,j,k} \triangleq \) GCN with \(i,j,k\) hidden layers using learnable adjacency matrix structure.
+\begin{table}[ht]
     \centering{}
     \caption{GNN Results}~\label{tab:results:gnn}
     \begin{tabular}{lcc}\toprule
-    \textbf{Models}   & \textbf{Train} & \textbf{Test} \\
-       & \textbf{Accuracy (\%)} & \textbf{Accuracy (\%)} \\ \midrule
-    $\text{GCN}_{200,20}$           & 100        & 66.50        \\
-    $\text{L-GCN}_{200,20}$         & 100        & 67.50        \\ 
-    $\text{GCN}_{2000,200,20}$      & 100        & 60.80        \\ 
-    $\text{L-GCN}_{2000,200,20}$    & 100        & 60.70        \\ 
-       \bottomrule
+        \textbf{Models}                & \textbf{Train}         & \textbf{Test}          \\
+                                       & \textbf{Accuracy (\%)} & \textbf{Accuracy (\%)} \\ \midrule
+        \(\text{GCN}_{200,20}\)        & 100                    & 66.50                  \\
+        \(\text{L-GCN}_{200,20}\)      & 100                    & 67.50                  \\
+        \(\text{GCN}_{2000,200,20}\)   & 100                    & 60.80                  \\
+        \(\text{L-GCN}_{2000,200,20}\) & 100                    & 60.70                  \\
+        \bottomrule
     \end{tabular}
 \end{table}
 
 \subsection{BERT Results}
-To train Distil-BERT on our dataset, we used the \href{https://huggingface.co/docs/transformers/index}{transformers} library. It allows us to further fine-tune our model on pre-trained Distil-BERT. Prediction results of the Distil-BERT model are in \cref{table:bert_results}.
-\begin{table}[h]
+To train Distil-BERT on our dataset, we used the \href{https://huggingface.co/docs/transformers/index}{transformers} library. It allows us to further fine-tune our model on pre-trained Distil-BERT\@. Prediction results of the Distil-BERT model are in \cref{table:bert_results}.
+\begin{table}[ht]
     \centering
     \caption{Distil-BERT Training Results}\label{table:bert_results}
     \begin{tabular}{rccc}\toprule
         \textbf{Epoch} & \textbf{Training Loss} & \textbf{Validation Loss} & \textbf{Accuracy (\%)} \\ \midrule
-        1 & 1.1764 & 1.217 & 65.64 \\ 
-        2 & 0.7607 & 1.174 & 68.12 \\ 
-        3 & 0.5118 & 1.440 & 67.90  \\
-        $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ \\
-        28 & 0.0684 & 3.372 & 69.98  \\ 
-        29 & 0.0817 & 3.397 & 70.05   \\ 
-        30 & 0.0799 & 3.404 & 69.99   \\ \bottomrule
+        1              & 1.1764                 & 1.217                    & 65.64                  \\
+        2              & 0.7607                 & 1.174                    & 68.12                  \\
+        3              & 0.5118                 & 1.440                    & 67.90                  \\
+        \(\vdots \)    & \(\vdots \)            & \(\vdots \)              & \(\vdots \)            \\
+        28             & 0.0684                 & 3.372                    & 69.98                  \\
+        29             & 0.0817                 & 3.397                    & 70.05                  \\
+        30             & 0.0799                 & 3.404                    & 69.99                  \\ \bottomrule
     \end{tabular}
 \end{table}
 \subsection[Combined Results]{Combined \DOCEM{} Results}
 The given combined results are find by using the method in \cref{agg:concat}. This method gave the best results for all models. Therefore, only this aggregation approach results are mentioned.
-\begin{table}[h]
+\begin{table}[ht]
     \centering{}
     \caption{GNN+BERT Combined Results}~\label{tab:results:combined}
     \begin{tabular}{llc}\toprule
-    \multicolumn{2}{c}{\multirow{2}{*}{\textbf{Models}}} & \textbf{20NG Test} \\
-       & & \textbf{Accuracy (\%)} \\ \midrule
-    $\text{GCN}_{200,20}$ & + Distil-BERT        & 67.20        \\
-    $\text{L-GCN}_{200,20}$  & + Distil-BERT                 & 69.70        \\ 
-    $\text{GCN}_{2000,200,20}$  & + Distil-BERT              & 64.90        \\ 
-    $\text{L-GCN}_{2000,200,20}$  & + Distil-BERT            & 63.20        \\ 
-       \bottomrule
+        \multicolumn{2}{c}{\multirow{2}{*}{\textbf{Models}}} & \textbf{20NG Test}                          \\
+                                                             &                    & \textbf{Accuracy (\%)} \\ \midrule
+        \(\text{GCN}_{200,20}\)                              & + Distil-BERT      & 67.20                  \\
+        \(\text{L-GCN}_{200,20}\)                            & + Distil-BERT      & 69.70                  \\
+        \(\text{GCN}_{2000,200,20}\)                         & + Distil-BERT      & 64.90                  \\
+        \(\text{L-GCN}_{2000,200,20}\)                       & + Distil-BERT      & 63.20                  \\
+        \bottomrule
     \end{tabular}
 \end{table}
 
 \subsection{Comparison with SOTA Algorithms}\label{results:sota}
 The results of the SOTA algorithms for the 20NG dataset along with our results are provided in~\cref{tab:results:sota}. The models are sorted according to their accuracies, and our results are provided in \textcolor{\resultcolor}{color}.
-\begin{table}[h]
+\begin{table}[ht]
     \centering{}
     \caption{SOTA Results}~\label{tab:results:sota}
     \begin{tabular}{lc}\toprule
-    \textbf{Models}   & \textbf{20NG Test}  \\
-        & \textbf{Accuracy (\%)} \\ \midrule
-    PV-DM           & 51.10        \\
-    LSTM            & 65.70        \\
-    \textcolor{\resultcolor}{$\text{L-GCN}_{200,20}$} & \textcolor{\resultcolor}{67.60} \\
-    \textcolor{\resultcolor}{$\text{L-GCN}_{200,20}$ +Distil-BERT} & \textcolor{\resultcolor}{69.70} \\ 
-    \textcolor{\resultcolor}{Our Distil-BERT} & \textcolor{\resultcolor}{70.05} \\
-    RoBERTa         & 83.80        \\
-    BERT            & 85.30        \\
-    TextGCN         & 86.30        \\
-    RoBERTaGAT      & 86.50        \\
-    BertGAT         & 87.40        \\
-    SGC             & 88.50        \\ 
-    BertGCN         & 89.30        \\
-    RoBERTaGCN      & \textbf{89.50} \\
-       \bottomrule
+        \textbf{Models}                                                  & \textbf{20NG Test}              \\
+                                                                         & \textbf{Accuracy (\%)}          \\ \midrule
+        PV-DM                                                            & 51.10                           \\
+        LSTM                                                             & 65.70                           \\
+        \textcolor{\resultcolor}{\(\text{L-GCN}_{200,20}\)}              & \textcolor{\resultcolor}{67.60} \\
+        \textcolor{\resultcolor}{\(\text{L-GCN}_{200,20}\) +Distil-BERT} & \textcolor{\resultcolor}{69.70} \\
+        \textcolor{\resultcolor}{Our Distil-BERT}                        & \textcolor{\resultcolor}{70.05} \\
+        RoBERTa                                                          & 83.80                           \\
+        BERT                                                             & 85.30                           \\
+        TextGCN                                                          & 86.30                           \\
+        RoBERTaGAT                                                       & 86.50                           \\
+        BertGAT                                                          & 87.40                           \\
+        SGC                                                              & 88.50                           \\
+        BertGCN                                                          & 89.30                           \\
+        RoBERTaGCN                                                       & \textbf{89.50}                  \\
+        \bottomrule
     \end{tabular}
 \end{table}
 
