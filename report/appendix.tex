@@ -9,5 +9,18 @@
 
     \onecolumn
     \section{Source Code}
+    \begin{pycode}
+from pathlib import Path
+report_path = Path.cwd()
+work_dir_path = report_path.parent
+python_files = list(work_dir_path.rglob('*.py'))
+python_files.pop(-1)
+python_files = python_files[::-1]
+for f in python_files:
+    title = f.name.replace("_", "\\_")
+    print(r"\subsection{" + f"{title}" + r"}")
+    print(r"\inputminted[linenos,fontsize=\scriptsize]{python}{" + f"{f}" + r"}")
+\end{pycode}
+
 \end{appendices}
 
